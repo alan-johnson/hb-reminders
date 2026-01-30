@@ -1,0 +1,40 @@
+{
+  "uuid": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+  "shortName": "TaskMgr",
+  "longName": "Task Manager",
+  "companyName": "Handsbreadth",
+  "versionLabel": "1.0",
+  "sdkVersion": "3",
+  "targetPlatforms": [
+    "flint",
+    "emery",
+    "diorite",
+    "chalk",
+    "basalt",
+    "aplite"
+  ],
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "KEY_TYPE": 0,
+    "KEY_NAME": 1,
+    "KEY_ID": 2,
+    "KEY_DUE_DATE": 3,
+    "KEY_COMPLETED": 4,
+    "KEY_LIST_NAME": 5
+  },
+  "resources": {
+    "media": [
+      {
+        "type": "bitmap",
+        "name": "IMAGE_CHECKMARK",
+        "file": "checkmark.png"
+      }
+    ]
+  },
+  "capabilities": [
+    "configurable"
+  ],
+  "enableMultiJS": false
+}

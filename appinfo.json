@@ -22,7 +22,9 @@
     "KEY_ID": 2,
     "KEY_DUE_DATE": 3,
     "KEY_COMPLETED": 4,
-    "KEY_LIST_NAME": 5
+    "KEY_LIST_NAME": 5,
+    "KEY_IDX": 6,
+    "KEY_PRIORITY": 7
   },
   "resources": {
     "media": [

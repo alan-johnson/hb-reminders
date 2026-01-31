@@ -1,8 +1,11 @@
 #include <pebble.h>
 
 // Windows
-static Window *s_main_window;
-static MenuLayer *s_menu_layer;
+static Window *s_lists_window;
+static MenuLayer *s_lists_menu;
+
+static Window *s_tasks_window;
+static MenuLayer *s_tasks_menu;
 
 // Navigation state
 typedef enum {
@@ -35,6 +38,28 @@ static int tasks_count = 0;
 static int selected_list_index = 0;
 static int selected_task_index = 0;
 
+// data for testing without javascript connection
+#define TESTING 1
+
+#if TESTING
+const char* task_lists_str[] = {
+  "Personal",
+  "Whirligigs and automatons",
+  "Tasks",
+  "Pebble",
+  "Bucket list",
+  "Shopping List",
+  "To Do",
+  "Reminders",
+  "To Dos",
+  "Shopping",
+  "Family",
+  "Groceries",
+  "Albums/songs",
+  "Work Tasks"
+};
+#endif
+
 // API callback keys
 #define KEY_TYPE 0
 #define KEY_NAME 1
@@ -47,59 +72,67 @@ static int selected_task_index = 0;
 
 // Function prototypes
 static void fetch_task_lists(void);
+static void fetch_task_lists_testing(void);
 static void fetch_tasks(const char *list_name);
+static void fetch_tasks_testing(void);
 static void complete_task(const char *task_id, const char *list_name);
 static void show_task_detail(void);
 
 // Menu callbacks
-static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "menu_get_num_rows_callback called");
-  
-  switch(current_state) {
-    case STATE_TASK_LISTS:
-      return task_lists_count;
-    case STATE_TASKS:
-      return tasks_count;
-    default:
-      return 0;
+// Lists menu callbacks
+static uint16_t lists_menu_get_num_rows(MenuLayer *menu_layer, uint16_t section_index, void *data) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "lists_menu_get_num_rows called");
+  return task_lists_count;
+}
+
+static void lists_menu_draw_row(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "lists_menu_draw_row called for row %d", cell_index->row);
+  if (cell_index->row < task_lists_count) {
+    menu_cell_basic_draw(ctx, cell_layer, task_lists[cell_index->row].name, NULL, NULL);
   }
 }
 
-static void menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "menu_draw_row_callback called for row %d", cell_index->row);
-  
-  switch(current_state) {
-    case STATE_TASK_LISTS:
-      menu_cell_basic_draw(ctx, cell_layer, task_lists[cell_index->row].name, NULL, NULL);
-      break;
-    case STATE_TASKS: {
-      Task *task = &tasks[cell_index->row];
-      const char *subtitle = task->completed ? "✓ Completed" : task->due_date;
-      menu_cell_basic_draw(ctx, cell_layer, task->name, subtitle, NULL);
-      break;
-    }
-    case STATE_TASK_DETAIL:
-      break;
+static void lists_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "lists_menu_select called for row %d", cell_index->row);
+  selected_list_index = cell_index->row;
+  current_state = STATE_TASKS;
+  // Push tasks window first so its menu exists
+  if (!s_tasks_window) {
+    s_tasks_window = window_create();
+    window_set_window_handlers(s_tasks_window, (WindowHandlers) {
+      .load = tasks_window_load,
+      .unload = tasks_window_unload,
+    });
+  }
+  window_stack_push(s_tasks_window, true);
+
+  #ifdef TESTING
+    fetch_tasks_testing();
+  #else
+    fetch_tasks(task_lists[selected_list_index].name);
+  #endif
+  if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
+}
+
+// Tasks menu callbacks
+static uint16_t tasks_menu_get_num_rows(MenuLayer *menu_layer, uint16_t section_index, void *data) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_get_num_rows called");
+  return tasks_count;
+}
+
+static void tasks_menu_draw_row(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_draw_row called for row %d", cell_index->row);
+  if (cell_index->row < tasks_count) {
+    Task *task = &tasks[cell_index->row];
+    const char *subtitle = task->completed ? "✓ Completed" : task->due_date;
+    menu_cell_basic_draw(ctx, cell_layer, task->name, subtitle, NULL);
   }
 }
 
-static void menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
-  
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "menu_select_callback called for row %d", cell_index->row);
-  
-  switch(current_state) {
-    case STATE_TASK_LISTS:
-      selected_list_index = cell_index->row;
-      current_state = STATE_TASKS;
-      fetch_tasks(task_lists[selected_list_index].name);
-      break;
-    case STATE_TASKS:
-      selected_task_index = cell_index->row;
-      show_task_detail();
-      break;
-    case STATE_TASK_DETAIL:
-      break;
-  }
+static void tasks_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_select called for row %d", cell_index->row);
+  selected_task_index = cell_index->row;
+  show_task_detail();
 }
 
 // Task detail window
@@ -107,6 +140,7 @@ static Window *s_detail_window;
 static TextLayer *s_detail_text_layer;
 static ActionBarLayer *s_action_bar;
 static GBitmap *s_checkmark_bitmap;
+static char s_detail_text[256];
 
 static void detail_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
@@ -116,6 +150,7 @@ static void detail_window_load(Window *window) {
   s_detail_text_layer = text_layer_create(GRect(0, 10, bounds.size.w - ACTION_BAR_WIDTH, bounds.size.h - 20));
   text_layer_set_text_alignment(s_detail_text_layer, GTextAlignmentLeft);
   text_layer_set_overflow_mode(s_detail_text_layer, GTextOverflowModeWordWrap);
+  text_layer_set_text(s_detail_text_layer, s_detail_text);
   layer_add_child(window_layer, text_layer_get_layer(s_detail_text_layer));
   
   // Create action bar
@@ -152,7 +187,7 @@ static void detail_select_click_handler(ClickRecognizerRef recognizer, void *con
     text_layer_set_text(s_detail_text_layer, detail_text);
     
     // Update the tasks list
-    menu_layer_reload_data(s_menu_layer);
+    if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
   }
 }
 
@@ -177,18 +212,21 @@ static void show_task_detail(void) {
     });
   }
   
-  // Set the task details
+  // Prepare the task details text
   Task *task = &tasks[selected_task_index];
-  static char detail_text[256];
-  snprintf(detail_text, sizeof(detail_text), 
+  snprintf(s_detail_text, sizeof(s_detail_text), 
            "Task: %s\n\nDue: %s\n\nStatus: %s\n\nSelect to mark complete", 
            task->name, 
            task->due_date,
            task->completed ? "Completed ✓" : "Pending");
   
+  // Push window to stack (this will trigger the load callback which sets the text)
   window_stack_push(s_detail_window, true);
-  text_layer_set_text(s_detail_text_layer, detail_text);
-  action_bar_layer_set_click_config_provider(s_action_bar, detail_click_config_provider);
+  
+  // Set click config provider
+  if (s_action_bar) {
+    action_bar_layer_set_click_config_provider(s_action_bar, detail_click_config_provider);
+  }
 }
 
 // AppMessage handlers
@@ -212,7 +250,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
           task_lists_count++;
           name_tuple = dict_read_next(iterator);
         }
-        menu_layer_reload_data(s_menu_layer);
+        if (s_lists_menu) menu_layer_reload_data(s_lists_menu);
         break;
       }
       
@@ -241,7 +279,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
           due_tuple = dict_read_next(iterator);
           completed_tuple = dict_read_next(iterator);
         }
-        menu_layer_reload_data(s_menu_layer);
+        if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
         break;
       }
     }
@@ -261,6 +299,108 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 }
 
 // API functions
+#ifdef TESTING
+static void fetch_task_lists_testing(void) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_task_lists_testing called");
+  
+  task_lists_count = 14;
+  for (int i = 0; i < task_lists_count; i++) {
+    snprintf(task_lists[i].name, sizeof(task_lists[i].name), "%s", task_lists_str[i]);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "added list name: %s", task_lists[i].name);
+  }
+  if (s_lists_menu) menu_layer_reload_data(s_lists_menu);
+}
+
+static void fetch_tasks_testing(void) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_tasks_testing called");
+  
+  // Sample task names
+  const char* sample_names[] = {
+    "Complete project report",
+    "Buy groceries",
+    "Call dentist",
+    "Review code changes",
+    "Schedule meeting",
+    "Fix bug in login",
+    "Update documentation",
+    "Pay bills",
+    "Organize files",
+    "Send email to team",
+    "Create presentation",
+    "Test new feature",
+    "Refactor database",
+    "Plan vacation",
+    "Clean desk",
+    "Review design mockups",
+    "Deploy to production",
+    "Setup development environment",
+    "Update dependencies",
+    "Write unit tests",
+    "Backup important files",
+    "Schedule dentist appointment",
+    "Renew subscription",
+    "Review analytics",
+    "Optimize performance",
+    "Fix CSS styling",
+    "Add error handling",
+    "Create user manual",
+    "Attend standup meeting",
+    "Update status report",
+    "Research new tools",
+    "Configure CI/CD pipeline",
+    "Interview candidates",
+    "Approve pull requests",
+    "Update project roadmap",
+    "Plan sprint",
+    "Write blog post",
+    "Record tutorial video",
+    "Optimize queries",
+    "Add logging",
+    "Review security",
+    "Plan architecture",
+    "Migrate data",
+    "Setup monitoring",
+    "Create dashboard",
+    "Document API",
+    "Test edge cases",
+    "Improve UX",
+    "Add caching",
+    "Configure webhook"
+  };
+  
+  // Sample due dates
+  const char* sample_dates[] = {
+    "2026-02-01", "2026-02-05", "2026-02-10", "2026-02-15", "2026-02-20",
+    "2026-03-01", "2026-03-05", "2026-03-10", "2026-03-15", "2026-03-20"
+  };
+  
+  tasks_count = 10;
+  for (int i = 0; i < tasks_count; i++) {
+    // Cycle through list indices
+    tasks[i].idx = i % 14;
+    
+    // Generate unique ID
+    snprintf(tasks[i].id, sizeof(tasks[i].id), "task_%d", i);
+    
+    // Assign sample name
+    snprintf(tasks[i].name, sizeof(tasks[i].name), "%s", sample_names[i % 50]);
+    
+    // Assign priority (0-3)
+    tasks[i].priority = i % 4;
+    
+    // Assign due date
+    snprintf(tasks[i].due_date, sizeof(tasks[i].due_date), "%s", sample_dates[i % 10]);
+    
+    // Roughly 30% completed
+    tasks[i].completed = (i % 10 < 3) ? true : false;
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "added task: %s (list idx: %d)", tasks[i].name, tasks[i].idx);
+  }
+  
+  if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
+}
+#endif
+
 static void fetch_task_lists(void) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_task_lists called");
 
@@ -290,23 +430,53 @@ static void complete_task(const char *task_id, const char *list_name) {
 }
 
 // Main window
-static void main_window_load(Window *window) {
-  Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_bounds(window_layer);
-  
-  s_menu_layer = menu_layer_create(bounds);
-  menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks){
-    .get_num_rows = menu_get_num_rows_callback,
-    .draw_row = menu_draw_row_callback,
-    .select_click = menu_select_callback,
-  });
-  
-  menu_layer_set_click_config_onto_window(s_menu_layer, window);
-  layer_add_child(window_layer, menu_layer_get_layer(s_menu_layer));
+static void tasks_window_unload(Window *window) {
+  // When tasks window is closed we should return to lists state
+  current_state = STATE_TASK_LISTS;
+  // Ensure lists menu is refreshed
+  if (s_lists_menu) {
+    menu_layer_reload_data(s_lists_menu);
+    menu_layer_set_selected_index(s_lists_menu, (MenuIndex){.section = 0, .row = selected_list_index}, MenuRowAlignCenter, false);
+  }
+  if (s_tasks_menu) {
+    menu_layer_destroy(s_tasks_menu);
+    s_tasks_menu = NULL;
+  }
 }
 
-static void main_window_unload(Window *window) {
-  menu_layer_destroy(s_menu_layer);
+static void tasks_window_load(Window *window) {
+  Layer *window_layer = window_get_root_layer(window);
+  GRect bounds = layer_get_bounds(window_layer);
+
+  s_tasks_menu = menu_layer_create(bounds);
+  menu_layer_set_callbacks(s_tasks_menu, NULL, (MenuLayerCallbacks){
+    .get_num_rows = tasks_menu_get_num_rows,
+    .draw_row = tasks_menu_draw_row,
+    .select_click = tasks_menu_select,
+  });
+  menu_layer_set_click_config_onto_window(s_tasks_menu, window);
+  layer_add_child(window_layer, menu_layer_get_layer(s_tasks_menu));
+}
+
+static void lists_window_load(Window *window) {
+  Layer *window_layer = window_get_root_layer(window);
+  GRect bounds = layer_get_bounds(window_layer);
+
+  s_lists_menu = menu_layer_create(bounds);
+  menu_layer_set_callbacks(s_lists_menu, NULL, (MenuLayerCallbacks){
+    .get_num_rows = lists_menu_get_num_rows,
+    .draw_row = lists_menu_draw_row,
+    .select_click = lists_menu_select,
+  });
+  menu_layer_set_click_config_onto_window(s_lists_menu, window);
+  layer_add_child(window_layer, menu_layer_get_layer(s_lists_menu));
+}
+
+static void lists_window_unload(Window *window) {
+  if (s_lists_menu) {
+    menu_layer_destroy(s_lists_menu);
+    s_lists_menu = NULL;
+  }
 }
 
 static void init(void) {
@@ -319,20 +489,34 @@ static void init(void) {
   // Open AppMessage
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
   
-  // Create main Window
-  s_main_window = window_create();
-  window_set_window_handlers(s_main_window, (WindowHandlers) {
-    .load = main_window_load,
-    .unload = main_window_unload
+  // Create lists (main) Window
+  s_lists_window = window_create();
+  window_set_window_handlers(s_lists_window, (WindowHandlers) {
+    .load = lists_window_load,
+    .unload = lists_window_unload
   });
-  window_stack_push(s_main_window, true);
+  // Create tasks window and set handlers
+  s_tasks_window = window_create();
+  window_set_window_handlers(s_tasks_window, (WindowHandlers) {
+    .load = tasks_window_load,
+    .unload = tasks_window_unload
+  });
+
+  window_stack_push(s_lists_window, true);
   
   // Fetch initial data
-  fetch_task_lists();
+  #ifdef TESTING
+    fetch_task_lists_testing();
+    fetch_tasks_testing();
+  #else
+    fetch_task_lists();
+  #endif
 }
 
 static void deinit(void) {
-  window_destroy(s_main_window);
+  if (s_lists_window) window_destroy(s_lists_window);
+  if (s_tasks_window) window_destroy(s_tasks_window);
+  if (s_detail_window) window_destroy(s_detail_window);
 }
 
 int main(void) {

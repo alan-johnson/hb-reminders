@@ -33,7 +33,7 @@
         {
           "type": "bitmap",
           "name": "IMAGE_CHECKMARK",
-          "file": "checkmark.png"
+          "file": "checkmark-wht.png"
         }
       ]
     },

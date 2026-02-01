@@ -1,31 +1,37 @@
 // PebbleKit JS - Handles communication between watch and REST API
 
-var hostname = "localhost";
+var hostname = "127.0.0.1";
 var port = 8080;
 var API_BASE = "http://" + hostname + ":" + port + "/tasks";
 
 // Listen for when the app is ready
 Pebble.addEventListener('ready', function(e) {
+  console.warn('=== PEBBLE READY ===');
   console.log('PebbleKit JS ready!');
   // Don't fetch here, let the watch app request when needed
 });
 
 // Listen for messages from the watch
 Pebble.addEventListener('appmessage', function(e) {
+  console.warn('=== APPMESSAGE EVENT FIRED ===');
   console.log('AppMessage received!');
+  console.log('Payload:', JSON.stringify(e.payload));
   var payload = e.payload;
   
   if (payload.KEY_TYPE === 1) {
     // Fetch task lists
+    console.log('KEY_TYPE 1: Fetching task lists');
     fetchTaskLists();
   } else if (payload.KEY_TYPE === 2) {
     // Fetch tasks for a specific list
     var listName = payload.KEY_LIST_NAME;
+    console.log('KEY_TYPE 2: Fetching tasks for list:', listName);
     fetchTasks(listName);
   } else if (payload.KEY_TYPE === 3) {
     // Complete a task
     var taskId = payload.KEY_ID;
     var listName = payload.KEY_LIST_NAME;
+    console.log('KEY_TYPE 3: Completing task', taskId, 'in list', listName);
     completeTask(taskId, listName);
   }
 });
@@ -33,21 +39,9 @@ Pebble.addEventListener('appmessage', function(e) {
 // Fetch task list names
 function fetchTaskLists() {
   console.log('Fetching task lists...');
-  
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists', true);
-  xhr.onload = function() {
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
-        console.log('Task lists received');
-        var lists = JSON.parse(xhr.responseText);
-        sendTaskListsToWatch(lists);
-      } else {
-        console.log('Request failed. Status: ' + xhr.status);
-      }
-    }
-  };
-  xhr.send();
+
+  var lists = ["Personal", "Work", "Shopping"];
+  sendTaskListsToWatch(lists);
 }
 
 // Send task lists to the watch
@@ -74,20 +68,13 @@ function sendTaskListsToWatch(lists) {
 function fetchTasks(listName) {
   console.log('Fetching tasks for list: ' + listName);
   
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists/' + encodeURIComponent(listName), true);
-  xhr.onload = function() {
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
-        console.log('Tasks received');
-        var tasks = JSON.parse(xhr.responseText);
-        sendTasksToWatch(tasks);
-      } else {
-        console.log('Request failed. Status: ' + xhr.status);
-      }
-    }
-  };
-  xhr.send();
+  var tasks = [
+    { id: '1', name: 'Task 1 for ' + listName, priority: 1, due_date: '2026-02-05', completed: false },
+    { id: '2', name: 'Task 2 for ' + listName, priority: 0, due_date: '2026-02-10', completed: false },
+    { id: '3', name: 'Task 3 for ' + listName, priority: 2, due_date: '2026-02-15', completed: true }
+  ];
+  
+  sendTasksToWatch(tasks);
 }
 
 // Send tasks to the watch

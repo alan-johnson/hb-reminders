@@ -1,0 +1,16 @@
+Installing app...
+App install succeeded.
+[11:10:00] pkjs> [PHONESIM] [WARNING] Exception decoding QemuInboundPacket.footer
+[11:10:01] essage_outbox.c:85> app_message_open() called with app_message_outbox_size_maximum().
+[11:10:01] essage_outbox.c:86> This consumes 8200 bytes of heap memory, potentially more in the future!
+[11:10:01] message_inbox.c:29> app_message_open() called with app_message_inbox_size_maximum().
+[11:10:01] message_inbox.c:30> This consumes 8200 bytes of heap memory, potentially more in the future!
+[11:10:01] task_manager.c:86> lists_menu_get_num_rows called
+[11:10:01] task_manager.c:86> lists_menu_get_num_rows called
+[11:10:01] task_manager.c:86> lists_menu_get_num_rows called
+[11:10:01] task_manager.c:86> lists_menu_get_num_rows called
+[11:10:01] task_manager.c:401> fetch_task_lists called
+[11:10:01] task_manager.c:86> lists_menu_get_num_rows called
+[11:10:01] task_manager.c:292> Outbox send success!
+[11:10:01] pkjs> [PHONESIM] [WARNING] Exception decoding QemuInboundPacket.footer
+[11:10:01] task_manager.c:86> lists_menu_get_num_rows called

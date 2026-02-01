@@ -38,7 +38,7 @@ static int tasks_count = 0;
 static int selected_list_index = 0;
 static int selected_task_index = 0;
 
-#define TESTING 1
+//#define TESTING 1
 #ifdef TESTING
 static const char *task_lists_testing[] = {
   "Personal",
@@ -69,10 +69,8 @@ static const char *task_lists_testing[] = {
 #define KEY_PRIORITY 7
 
 // Function prototypes
-static void fetch_task_lists_testing(void);
 static void fetch_task_lists(void);
 static void fetch_tasks(const char *list_name);
-static void fetch_tasks_testing(void);
 static void complete_task(const char *task_id, const char *list_name);
 static void show_task_detail(void);
 static void tasks_window_load(Window *window);
@@ -401,16 +399,32 @@ static void fetch_task_lists(void) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_task_lists called");
 
   DictionaryIterator *iter;
-  app_message_outbox_begin(&iter);
-  dict_write_uint8(iter, KEY_TYPE, 1); // Request task lists
-  app_message_outbox_send();
+  AppMessageResult result = app_message_outbox_begin(&iter);
+  if (result != APP_MSG_OK) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Error beginning outbox: %d", result);
+    return;
+  }
+  
+  // Send a test message with more data to verify format
+  dict_write_uint8(iter, KEY_TYPE, 1);
+  
+  result = app_message_outbox_send();
+  if (result != APP_MSG_OK) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Error sending outbox: %d", result);
+  } else {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Message sent successfully");
+  }
 }
 
 static void fetch_tasks(const char *list_name) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_tasks called for list: %s", list_name);
 
   DictionaryIterator *iter;
-  app_message_outbox_begin(&iter);
+  AppMessageResult result = app_message_outbox_begin(&iter);
+  if (result != APP_MSG_OK) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "app_message_outbox_begin failed: %d", result);
+    return;
+  }
   dict_write_uint8(iter, KEY_TYPE, 2); // Request tasks
   dict_write_cstring(iter, KEY_LIST_NAME, list_name);
   app_message_outbox_send();
@@ -418,7 +432,11 @@ static void fetch_tasks(const char *list_name) {
 
 static void complete_task(const char *task_id, const char *list_name) {
   DictionaryIterator *iter;
-  app_message_outbox_begin(&iter);
+  AppMessageResult result = app_message_outbox_begin(&iter);
+  if (result != APP_MSG_OK) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "app_message_outbox_begin failed: %d", result);
+    return;
+  }
   dict_write_uint8(iter, KEY_TYPE, 3); // Complete task
   dict_write_cstring(iter, KEY_ID, task_id);
   dict_write_cstring(iter, KEY_LIST_NAME, list_name);
@@ -461,6 +479,13 @@ static void lists_window_load(Window *window) {
   });
   menu_layer_set_click_config_onto_window(s_lists_menu, window);
   layer_add_child(window_layer, menu_layer_get_layer(s_lists_menu));
+  
+  // Fetch initial data now that menu is ready
+  #ifdef TESTING
+    fetch_task_lists_testing();
+  #else
+    fetch_task_lists();
+  #endif
 }
 
 static void lists_window_unload(Window *window) {
@@ -478,7 +503,8 @@ static void init(void) {
   app_message_register_outbox_sent(outbox_sent_callback);
   
   // Open AppMessage
-  app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  //app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  app_message_open(512, 512);
   
   // Create lists (main) Window
   s_lists_window = window_create();
@@ -494,14 +520,6 @@ static void init(void) {
   });
 
   window_stack_push(s_lists_window, true);
-  
-  // Fetch initial data
-  #ifdef TESTING
-    fetch_task_lists_testing();
-    fetch_tasks_testing();
-  #else
-    fetch_task_lists();
-  #endif
 }
 
 static void deinit(void) {

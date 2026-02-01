@@ -38,7 +38,7 @@ static int tasks_count = 0;
 static int selected_list_index = 0;
 static int selected_task_index = 0;
 
-//#define TESTING 1
+#define TESTING 1
 #ifdef TESTING
 static const char *task_lists_testing[] = {
   "Personal",
@@ -77,6 +77,10 @@ static void tasks_window_load(Window *window);
 static void tasks_window_unload(Window *window);
 static void lists_window_load(Window *window);
 static void lists_window_unload(Window *window);
+#ifdef TESTING
+static void fetch_task_lists_testing(void);
+static void fetch_tasks_testing(void);
+#endif
 
 // Menu callbacks
 // Lists menu callbacks
@@ -96,6 +100,10 @@ static void lists_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void
   APP_LOG(APP_LOG_LEVEL_DEBUG, "lists_menu_select called for row %d", cell_index->row);
   selected_list_index = cell_index->row;
   current_state = STATE_TASKS;
+
+  // Reset tasks count before fetching new list
+  tasks_count = 0;
+
   window_stack_push(s_tasks_window, true);
 
   #ifdef TESTING
@@ -222,6 +230,27 @@ static void show_task_detail(void) {
 }
 
 // AppMessage handlers
+
+static const char* app_message_result_to_string(AppMessageResult result) {
+  switch(result) {
+    case APP_MSG_OK: return "APP_MSG_OK";
+    case APP_MSG_SEND_TIMEOUT: return "APP_MSG_SEND_TIMEOUT";
+    case APP_MSG_SEND_REJECTED: return "APP_MSG_SEND_REJECTED";
+    case APP_MSG_NOT_CONNECTED: return "APP_MSG_NOT_CONNECTED";
+    case APP_MSG_APP_NOT_RUNNING: return "APP_MSG_APP_NOT_RUNNING";
+    case APP_MSG_INVALID_ARGS: return "APP_MSG_INVALID_ARGS";
+    case APP_MSG_BUSY: return "APP_MSG_BUSY";
+    case APP_MSG_BUFFER_OVERFLOW: return "APP_MSG_BUFFER_OVERFLOW";
+    case APP_MSG_ALREADY_RELEASED: return "APP_MSG_ALREADY_RELEASED";
+    case APP_MSG_CALLBACK_ALREADY_REGISTERED: return "APP_MSG_CALLBACK_ALREADY_REGISTERED";
+    case APP_MSG_CALLBACK_NOT_REGISTERED: return "APP_MSG_CALLBACK_NOT_REGISTERED";
+    case APP_MSG_OUT_OF_MEMORY: return "APP_MSG_OUT_OF_MEMORY";
+    case APP_MSG_CLOSED: return "APP_MSG_CLOSED";
+    case APP_MSG_INTERNAL_ERROR: return "APP_MSG_INTERNAL_ERROR";
+    default: return "UNKNOWN";
+  }
+}
+
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "inbox_received_callback called");
   
@@ -232,46 +261,39 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     
     switch(type) {
       case 1: { // Task list names
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "inbox, received list names");
-        task_lists_count = 0;
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "inbox, received list name");
         Tuple *name_tuple = dict_find(iterator, KEY_NAME);
-        while (name_tuple && task_lists_count < 20) {
-          snprintf(task_lists[task_lists_count].name, sizeof(task_lists[0].name), 
+        if (name_tuple && task_lists_count < 20) {
+          snprintf(task_lists[task_lists_count].name, sizeof(task_lists[0].name),
                    "%s", name_tuple->value->cstring);
           APP_LOG(APP_LOG_LEVEL_DEBUG, "added list name: %s", task_lists[task_lists_count].name);
           task_lists_count++;
-          name_tuple = dict_read_next(iterator);
+          if (s_lists_menu) menu_layer_reload_data(s_lists_menu);
         }
-        if (s_lists_menu) menu_layer_reload_data(s_lists_menu);
         break;
       }
       
       case 2: { // Tasks in a list
-        tasks_count = 0;
         // Parse task data from dictionary
         Tuple *id_tuple = dict_find(iterator, KEY_ID);
         Tuple *name_tuple = dict_find(iterator, KEY_NAME);
         Tuple *due_tuple = dict_find(iterator, KEY_DUE_DATE);
         Tuple *completed_tuple = dict_find(iterator, KEY_COMPLETED);
-        
-        while (id_tuple && name_tuple && tasks_count < 50) {
-          snprintf(tasks[tasks_count].id, sizeof(tasks[0].id), 
+
+        if (id_tuple && name_tuple && tasks_count < 50) {
+          snprintf(tasks[tasks_count].id, sizeof(tasks[0].id),
                    "%s", id_tuple->value->cstring);
-          snprintf(tasks[tasks_count].name, sizeof(tasks[0].name), 
+          snprintf(tasks[tasks_count].name, sizeof(tasks[0].name),
                    "%s", name_tuple->value->cstring);
           if (due_tuple) {
-            snprintf(tasks[tasks_count].due_date, sizeof(tasks[0].due_date), 
+            snprintf(tasks[tasks_count].due_date, sizeof(tasks[0].due_date),
                      "%s", due_tuple->value->cstring);
           }
           tasks[tasks_count].completed = completed_tuple ? completed_tuple->value->int32 : 0;
-          
+
           tasks_count++;
-          id_tuple = dict_read_next(iterator);
-          name_tuple = dict_read_next(iterator);
-          due_tuple = dict_read_next(iterator);
-          completed_tuple = dict_read_next(iterator);
+          if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
         }
-        if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
         break;
       }
     }
@@ -279,11 +301,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
-  APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped! Reason: %s", app_message_result_to_string(reason));
 }
 
 static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
   APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Error sending outbox: %s", app_message_result_to_string(reason));
+
 }
 
 static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
@@ -401,16 +425,16 @@ static void fetch_task_lists(void) {
   DictionaryIterator *iter;
   AppMessageResult result = app_message_outbox_begin(&iter);
   if (result != APP_MSG_OK) {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "Error beginning outbox: %d", result);
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Error beginning outbox: %s", app_message_result_to_string(result));
     return;
   }
-  
+
   // Send a test message with more data to verify format
   dict_write_uint8(iter, KEY_TYPE, 1);
-  
+
   result = app_message_outbox_send();
   if (result != APP_MSG_OK) {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "Error sending outbox: %d", result);
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Error sending outbox: %s", app_message_result_to_string(result));
   } else {
     APP_LOG(APP_LOG_LEVEL_INFO, "Message sent successfully");
   }
@@ -422,7 +446,7 @@ static void fetch_tasks(const char *list_name) {
   DictionaryIterator *iter;
   AppMessageResult result = app_message_outbox_begin(&iter);
   if (result != APP_MSG_OK) {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "app_message_outbox_begin failed: %d", result);
+    APP_LOG(APP_LOG_LEVEL_ERROR, "app_message_outbox_begin failed: %s", app_message_result_to_string(result));
     return;
   }
   dict_write_uint8(iter, KEY_TYPE, 2); // Request tasks
@@ -434,7 +458,7 @@ static void complete_task(const char *task_id, const char *list_name) {
   DictionaryIterator *iter;
   AppMessageResult result = app_message_outbox_begin(&iter);
   if (result != APP_MSG_OK) {
-    APP_LOG(APP_LOG_LEVEL_ERROR, "app_message_outbox_begin failed: %d", result);
+    APP_LOG(APP_LOG_LEVEL_ERROR, "app_message_outbox_begin failed: %s", app_message_result_to_string(result));
     return;
   }
   dict_write_uint8(iter, KEY_TYPE, 3); // Complete task
@@ -479,7 +503,10 @@ static void lists_window_load(Window *window) {
   });
   menu_layer_set_click_config_onto_window(s_lists_menu, window);
   layer_add_child(window_layer, menu_layer_get_layer(s_lists_menu));
-  
+
+  // Reset count before fetching task lists
+  task_lists_count = 0;
+
   // Fetch initial data now that menu is ready
   #ifdef TESTING
     fetch_task_lists_testing();

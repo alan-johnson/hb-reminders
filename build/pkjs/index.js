@@ -1,6 +1,7 @@
 // PebbleKit JS - Handles communication between watch and REST API
+console.log('*** JavaScript file loaded! ***');
 
-var hostname = "127.0.0.1";
+var hostname = "10.0.0.64";
 var port = 8080;
 var API_BASE = "http://" + hostname + ":" + port + "/tasks";
 
@@ -17,7 +18,10 @@ Pebble.addEventListener('appmessage', function(e) {
   console.log('AppMessage received!');
   console.log('Payload:', JSON.stringify(e.payload));
   var payload = e.payload;
-  
+
+  // Acknowledge receipt of the message
+  e.ack();
+
   if (payload.KEY_TYPE === 1) {
     // Fetch task lists
     console.log('KEY_TYPE 1: Fetching task lists');
@@ -38,10 +42,26 @@ Pebble.addEventListener('appmessage', function(e) {
 
 // Fetch task list names
 function fetchTaskLists() {
-  console.log('Fetching task lists...');
+  console.log('Fetching task lists from API...');
 
-  var lists = ["Personal", "Work", "Shopping"];
-  sendTaskListsToWatch(lists);
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_BASE, true);
+  xhr.onload = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        try {
+          var response = JSON.parse(xhr.responseText);
+          console.log('Received lists:', JSON.stringify(response));
+          sendTaskListsToWatch(response.lists);
+        } catch (e) {
+          console.log('Error parsing response:', e);
+        }
+      } else {
+        console.log('Failed to fetch task lists. Status:', xhr.status);
+      }
+    }
+  };
+  xhr.send();
 }
 
 // Send task lists to the watch
@@ -66,15 +86,26 @@ function sendTaskListsToWatch(lists) {
 
 // Fetch tasks for a specific list
 function fetchTasks(listName) {
-  console.log('Fetching tasks for list: ' + listName);
-  
-  var tasks = [
-    { id: '1', name: 'Task 1 for ' + listName, priority: 1, due_date: '2026-02-05', completed: false },
-    { id: '2', name: 'Task 2 for ' + listName, priority: 0, due_date: '2026-02-10', completed: false },
-    { id: '3', name: 'Task 3 for ' + listName, priority: 2, due_date: '2026-02-15', completed: true }
-  ];
-  
-  sendTasksToWatch(tasks);
+  console.log('Fetching tasks for list from API: ' + listName);
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_BASE + '/' + encodeURIComponent(listName), true);
+  xhr.onload = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        try {
+          var response = JSON.parse(xhr.responseText);
+          console.log('Received tasks:', JSON.stringify(response));
+          sendTasksToWatch(response.tasks);
+        } catch (e) {
+          console.log('Error parsing response:', e);
+        }
+      } else {
+        console.log('Failed to fetch tasks. Status:', xhr.status);
+      }
+    }
+  };
+  xhr.send();
 }
 
 // Send tasks to the watch

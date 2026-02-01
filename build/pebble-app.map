@@ -178,6 +178,8 @@ Discarded input sections
                 0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
  .text.dict_read_first
                 0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+ .text.dict_read_next
+                0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
  .text.dict_serialize_tuplets
                 0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
  .text.dict_serialize_tuplets_to_buffer__deprecated
@@ -323,7 +325,6 @@ Discarded input sections
  .text.localtime__deprecated
                 0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
  .text.malloc   0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
- .text.memcpy   0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
  .text.memmove  0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
  .text.menu_cell_basic_header_draw
                 0x0000000000000000        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
@@ -1178,260 +1179,264 @@ LOAD /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolc
  .note.gnu.build-id
                 0x0000000000000084       0x24 linker stubs
 
-.text           0x00000000000000a8      0xebb
+.text           0x00000000000000a8     0x166d
  *(.text)
  .text          0x00000000000000a8       0x14 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
  *(.text.*)
+ .text.app_message_result_to_string
+                0x00000000000000bc       0xe8 src/c/task_manager.c.41.o
  .text.tasks_window_unload
-                0x00000000000000bc       0x24 src/c/task_manager.c.41.o
+                0x00000000000001a4       0x24 src/c/task_manager.c.41.o
  .text.lists_window_unload
-                0x00000000000000e0       0x18 src/c/task_manager.c.41.o
+                0x00000000000001c8       0x18 src/c/task_manager.c.41.o
  .text.tasks_window_load
-                0x00000000000000f8       0x94 src/c/task_manager.c.41.o
+                0x00000000000001e0       0x94 src/c/task_manager.c.41.o
  .text.tasks_menu_get_num_rows
-                0x000000000000018c       0x28 src/c/task_manager.c.41.o
+                0x0000000000000274       0x28 src/c/task_manager.c.41.o
  .text.lists_menu_get_num_rows
-                0x00000000000001b4       0x28 src/c/task_manager.c.41.o
+                0x000000000000029c       0x28 src/c/task_manager.c.41.o
  .text.outbox_sent_callback
-                0x00000000000001dc       0x1c src/c/task_manager.c.41.o
+                0x00000000000002c4       0x1c src/c/task_manager.c.41.o
  .text.outbox_failed_callback
-                0x00000000000001f8       0x1c src/c/task_manager.c.41.o
+                0x00000000000002e0       0x40 src/c/task_manager.c.41.o
  .text.inbox_dropped_callback
-                0x0000000000000214       0x1c src/c/task_manager.c.41.o
+                0x0000000000000320       0x24 src/c/task_manager.c.41.o
  .text.tasks_menu_select
-                0x0000000000000230      0x108 src/c/task_manager.c.41.o
+                0x0000000000000344      0x108 src/c/task_manager.c.41.o
  .text.detail_click_config_provider
-                0x0000000000000338       0x24 src/c/task_manager.c.41.o
+                0x000000000000044c       0x24 src/c/task_manager.c.41.o
  .text.detail_back_click_handler
-                0x000000000000035c        0x6 src/c/task_manager.c.41.o
- *fill*         0x0000000000000362        0x2 
- .text.detail_select_click_handler
-                0x0000000000000364       0xd0 src/c/task_manager.c.41.o
+                0x0000000000000470        0x6 src/c/task_manager.c.41.o
+ *fill*         0x0000000000000476        0x2 
  .text.lists_window_load
-                0x0000000000000434      0x118 src/c/task_manager.c.41.o
+                0x0000000000000478      0x130 src/c/task_manager.c.41.o
  .text.lists_menu_select
-                0x000000000000054c       0xb8 src/c/task_manager.c.41.o
+                0x00000000000005a8      0x1b4 src/c/task_manager.c.41.o
+ .text.detail_select_click_handler
+                0x000000000000075c       0xd4 src/c/task_manager.c.41.o
  .text.detail_window_unload
-                0x0000000000000604       0x58 src/c/task_manager.c.41.o
+                0x0000000000000830       0x58 src/c/task_manager.c.41.o
  .text.detail_window_load
-                0x000000000000065c       0xa8 src/c/task_manager.c.41.o
+                0x0000000000000888       0xa8 src/c/task_manager.c.41.o
  .text.tasks_menu_draw_row
-                0x0000000000000704       0x68 src/c/task_manager.c.41.o
+                0x0000000000000930       0x68 src/c/task_manager.c.41.o
  .text.lists_menu_draw_row
-                0x000000000000076c       0x50 src/c/task_manager.c.41.o
+                0x0000000000000998       0x50 src/c/task_manager.c.41.o
  .text.inbox_received_callback
-                0x00000000000007bc      0x1dc src/c/task_manager.c.41.o
+                0x00000000000009e8      0x1a4 src/c/task_manager.c.41.o
  .text.startup.main
-                0x0000000000000998       0xf0 src/c/task_manager.c.41.o
-                0x0000000000000998                main
+                0x0000000000000b8c       0xf0 src/c/task_manager.c.41.o
+                0x0000000000000b8c                main
  .text.app_event_loop
-                0x0000000000000a88        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000a88                app_event_loop
- .text.app_log  0x0000000000000a94        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000a94                app_log
+                0x0000000000000c7c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000c7c                app_event_loop
+ .text.app_log  0x0000000000000c88        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000c88                app_log
  .text.app_message_open
-                0x0000000000000aa0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000aa0                app_message_open
+                0x0000000000000c94        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000c94                app_message_open
  .text.dict_find
-                0x0000000000000aac        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000aac                dict_find
- .text.dict_read_next
-                0x0000000000000ab8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000ab8                dict_read_next
+                0x0000000000000ca0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000ca0                dict_find
  .text.dict_write_cstring
-                0x0000000000000ac4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000ac4                dict_write_cstring
+                0x0000000000000cac        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000cac                dict_write_cstring
  .text.dict_write_uint8
-                0x0000000000000ad0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000ad0                dict_write_uint8
+                0x0000000000000cb8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000cb8                dict_write_uint8
  .text.gbitmap_create_with_resource
-                0x0000000000000adc        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000adc                gbitmap_create_with_resource
+                0x0000000000000cc4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000cc4                gbitmap_create_with_resource
  .text.gbitmap_destroy
-                0x0000000000000ae8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000ae8                gbitmap_destroy
+                0x0000000000000cd0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000cd0                gbitmap_destroy
  .text.layer_add_child
-                0x0000000000000af4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000af4                layer_add_child
+                0x0000000000000cdc        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000cdc                layer_add_child
  .text.layer_get_bounds
-                0x0000000000000b00        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b00                layer_get_bounds
- .text.memset   0x0000000000000b0c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b0c                memset
+                0x0000000000000ce8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000ce8                layer_get_bounds
+ .text.memcpy   0x0000000000000cf4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000cf4                memcpy
+ .text.memset   0x0000000000000d00        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d00                memset
  .text.menu_cell_basic_draw
-                0x0000000000000b18        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b18                menu_cell_basic_draw
+                0x0000000000000d0c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d0c                menu_cell_basic_draw
  .text.menu_layer_destroy
-                0x0000000000000b24        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b24                menu_layer_destroy
+                0x0000000000000d18        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d18                menu_layer_destroy
  .text.menu_layer_get_layer
-                0x0000000000000b30        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b30                menu_layer_get_layer
+                0x0000000000000d24        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d24                menu_layer_get_layer
  .text.menu_layer_reload_data
-                0x0000000000000b3c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b3c                menu_layer_reload_data
+                0x0000000000000d30        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d30                menu_layer_reload_data
  .text.menu_layer_set_click_config_onto_window
-                0x0000000000000b48        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b48                menu_layer_set_click_config_onto_window
+                0x0000000000000d3c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d3c                menu_layer_set_click_config_onto_window
  .text.snprintf
-                0x0000000000000b54        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b54                snprintf
+                0x0000000000000d48        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d48                snprintf
  .text.window_create
-                0x0000000000000b60        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b60                window_create
+                0x0000000000000d54        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d54                window_create
  .text.window_destroy
-                0x0000000000000b6c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b6c                window_destroy
+                0x0000000000000d60        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d60                window_destroy
  .text.window_get_root_layer
-                0x0000000000000b78        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b78                window_get_root_layer
+                0x0000000000000d6c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d6c                window_get_root_layer
  .text.window_set_window_handlers
-                0x0000000000000b84        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b84                window_set_window_handlers
+                0x0000000000000d78        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d78                window_set_window_handlers
  .text.window_stack_pop
-                0x0000000000000b90        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b90                window_stack_pop
+                0x0000000000000d84        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d84                window_stack_pop
  .text.window_stack_push
-                0x0000000000000b9c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000b9c                window_stack_push
+                0x0000000000000d90        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d90                window_stack_push
  .text.app_message_outbox_begin
-                0x0000000000000ba8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000ba8                app_message_outbox_begin
+                0x0000000000000d9c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000d9c                app_message_outbox_begin
  .text.app_message_outbox_send
-                0x0000000000000bb4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000bb4                app_message_outbox_send
+                0x0000000000000da8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000da8                app_message_outbox_send
  .text.app_message_register_inbox_dropped
-                0x0000000000000bc0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000bc0                app_message_register_inbox_dropped
+                0x0000000000000db4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000db4                app_message_register_inbox_dropped
  .text.app_message_register_inbox_received
-                0x0000000000000bcc        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000bcc                app_message_register_inbox_received
+                0x0000000000000dc0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000dc0                app_message_register_inbox_received
  .text.app_message_register_outbox_failed
-                0x0000000000000bd8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000bd8                app_message_register_outbox_failed
+                0x0000000000000dcc        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000dcc                app_message_register_outbox_failed
  .text.app_message_register_outbox_sent
-                0x0000000000000be4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000be4                app_message_register_outbox_sent
+                0x0000000000000dd8        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000dd8                app_message_register_outbox_sent
  .text.window_single_click_subscribe
-                0x0000000000000bf0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000bf0                window_single_click_subscribe
+                0x0000000000000de4        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000de4                window_single_click_subscribe
  .text.menu_layer_create
-                0x0000000000000bfc        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000bfc                menu_layer_create
+                0x0000000000000df0        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000df0                menu_layer_create
  .text.action_bar_layer_add_to_window
-                0x0000000000000c08        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c08                action_bar_layer_add_to_window
+                0x0000000000000dfc        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000dfc                action_bar_layer_add_to_window
  .text.action_bar_layer_create
-                0x0000000000000c14        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c14                action_bar_layer_create
+                0x0000000000000e08        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e08                action_bar_layer_create
  .text.action_bar_layer_destroy
-                0x0000000000000c20        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c20                action_bar_layer_destroy
+                0x0000000000000e14        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e14                action_bar_layer_destroy
  .text.action_bar_layer_set_click_config_provider
-                0x0000000000000c2c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c2c                action_bar_layer_set_click_config_provider
+                0x0000000000000e20        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e20                action_bar_layer_set_click_config_provider
  .text.action_bar_layer_set_icon
-                0x0000000000000c38        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c38                action_bar_layer_set_icon
+                0x0000000000000e2c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e2c                action_bar_layer_set_icon
  .text.text_layer_create
-                0x0000000000000c44        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c44                text_layer_create
+                0x0000000000000e38        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e38                text_layer_create
  .text.text_layer_destroy
-                0x0000000000000c50        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c50                text_layer_destroy
+                0x0000000000000e44        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e44                text_layer_destroy
  .text.text_layer_get_layer
-                0x0000000000000c5c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c5c                text_layer_get_layer
+                0x0000000000000e50        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e50                text_layer_get_layer
  .text.text_layer_set_overflow_mode
-                0x0000000000000c68        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c68                text_layer_set_overflow_mode
+                0x0000000000000e5c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e5c                text_layer_set_overflow_mode
  .text.text_layer_set_text
-                0x0000000000000c74        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c74                text_layer_set_text
+                0x0000000000000e68        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e68                text_layer_set_text
  .text.text_layer_set_text_alignment
-                0x0000000000000c80        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c80                text_layer_set_text_alignment
+                0x0000000000000e74        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e74                text_layer_set_text_alignment
  .text.menu_layer_set_callbacks
-                0x0000000000000c8c        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
-                0x0000000000000c8c                menu_layer_set_callbacks
+                0x0000000000000e80        0xc /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+                0x0000000000000e80                menu_layer_set_callbacks
  *(.rodata)
  *(.rodata*)
  .rodata.str1.1
-                0x0000000000000c98      0x2cb src/c/task_manager.c.41.o
-                                        0x2dc (size before relaxing)
+                0x0000000000000e8c      0x889 src/c/task_manager.c.41.o
+                                        0x8a0 (size before relaxing)
 
-.glue_7         0x0000000000000f64        0x0
+.glue_7         0x0000000000001718        0x0
  .glue_7        0x0000000000000000        0x0 linker stubs
 
-.glue_7t        0x0000000000000f64        0x0
+.glue_7t        0x0000000000001718        0x0
  .glue_7t       0x0000000000000000        0x0 linker stubs
 
-.vfp11_veneer   0x0000000000000f64        0x0
+.vfp11_veneer   0x0000000000001718        0x0
  .vfp11_veneer  0x0000000000000000        0x0 linker stubs
 
-.v4_bx          0x0000000000000f64        0x0
+.v4_bx          0x0000000000001718        0x0
  .v4_bx         0x0000000000000000        0x0 linker stubs
 
-.iplt           0x0000000000000f64        0x0
+.iplt           0x0000000000001718        0x0
  .iplt          0x0000000000000000        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtbegin.o
 
-.rel.dyn        0x0000000000000f64        0x0
+.rel.dyn        0x0000000000001718        0x0
  .rel.iplt      0x0000000000000000        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtbegin.o
 
-.data           0x0000000000000f64        0x4
+.data           0x0000000000001718      0x12c
  *(.data)
- .data          0x0000000000000f64        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crti.o
- .data          0x0000000000000f64        0x4 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtbegin.o
-                0x0000000000000f64                __dso_handle
- .data          0x0000000000000f68        0x0 src/c/task_manager.c.41.o
- .data          0x0000000000000f68        0x0 aplite/appinfo.auto.c.41.o
- .data          0x0000000000000f68        0x0 aplite/src/resource_ids.auto.c.41.o
- .data          0x0000000000000f68        0x0 src/message_keys.auto.c.41.o
- .data          0x0000000000000f68        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
- .data          0x0000000000000f68        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtend.o
- .data          0x0000000000000f68        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtn.o
+ .data          0x0000000000001718        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crti.o
+ .data          0x0000000000001718        0x4 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtbegin.o
+                0x0000000000001718                __dso_handle
+ .data          0x000000000000171c       0xf0 src/c/task_manager.c.41.o
+ .data          0x000000000000180c        0x0 aplite/appinfo.auto.c.41.o
+ .data          0x000000000000180c        0x0 aplite/src/resource_ids.auto.c.41.o
+ .data          0x000000000000180c        0x0 src/message_keys.auto.c.41.o
+ .data          0x000000000000180c        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/current/sdk-core/pebble/aplite/lib/libpebble.a(tmp7jpKUopebble.o)
+ .data          0x000000000000180c        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtend.o
+ .data          0x000000000000180c        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtn.o
  *(.data.*)
+ .data.rel.ro.local.task_lists_testing
+                0x000000000000180c       0x38 src/c/task_manager.c.41.o
 
-.igot.plt       0x0000000000000f68        0x0
+.igot.plt       0x0000000000001844        0x0
  .igot.plt      0x0000000000000000        0x0 /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtbegin.o
 
-.bss            0x0000000000000f68     0x2d48
+.bss            0x0000000000001844     0x2d4c
  *(.bss)
  *(.bss.*)
  .bss.selected_task_index
-                0x0000000000000f68        0x4 src/c/task_manager.c.41.o
+                0x0000000000001844        0x4 src/c/task_manager.c.41.o
  .bss.s_detail_text
-                0x0000000000000f6c      0x100 src/c/task_manager.c.41.o
+                0x0000000000001848      0x100 src/c/task_manager.c.41.o
  .bss.s_lists_window
-                0x000000000000106c        0x4 src/c/task_manager.c.41.o
+                0x0000000000001948        0x4 src/c/task_manager.c.41.o
  .bss.s_tasks_menu
-                0x0000000000001070        0x4 src/c/task_manager.c.41.o
+                0x000000000000194c        0x4 src/c/task_manager.c.41.o
  .bss.tasks_count
-                0x0000000000001074        0x4 src/c/task_manager.c.41.o
+                0x0000000000001950        0x4 src/c/task_manager.c.41.o
  .bss.selected_list_index
-                0x0000000000001078        0x4 src/c/task_manager.c.41.o
- .bss.tasks     0x000000000000107c     0x2616 src/c/task_manager.c.41.o
- .bss.current_state
-                0x0000000000003692        0x1 src/c/task_manager.c.41.o
- *fill*         0x0000000000003693        0x1 
+                0x0000000000001954        0x4 src/c/task_manager.c.41.o
+ .bss.tasks     0x0000000000001958     0x2616 src/c/task_manager.c.41.o
+ *fill*         0x0000000000003f6e        0x2 
  .bss.s_lists_menu
-                0x0000000000003694        0x4 src/c/task_manager.c.41.o
+                0x0000000000003f70        0x4 src/c/task_manager.c.41.o
+ .bss.current_state
+                0x0000000000003f74        0x1 src/c/task_manager.c.41.o
+ *fill*         0x0000000000003f75        0x3 
  .bss.s_tasks_window
-                0x0000000000003698        0x4 src/c/task_manager.c.41.o
+                0x0000000000003f78        0x4 src/c/task_manager.c.41.o
  .bss.s_detail_window
-                0x000000000000369c        0x4 src/c/task_manager.c.41.o
+                0x0000000000003f7c        0x4 src/c/task_manager.c.41.o
  .bss.s_detail_text_layer
-                0x00000000000036a0        0x4 src/c/task_manager.c.41.o
- .bss.detail_text.7574
-                0x00000000000036a4      0x100 src/c/task_manager.c.41.o
- .bss.s_action_bar
-                0x00000000000037a4        0x4 src/c/task_manager.c.41.o
- .bss.task_lists_count
-                0x00000000000037a8        0x4 src/c/task_manager.c.41.o
+                0x0000000000003f80        0x4 src/c/task_manager.c.41.o
  .bss.s_checkmark_bitmap
-                0x00000000000037ac        0x4 src/c/task_manager.c.41.o
+                0x0000000000003f84        0x4 src/c/task_manager.c.41.o
+ .bss.s_action_bar
+                0x0000000000003f88        0x4 src/c/task_manager.c.41.o
+ .bss.task_lists_count
+                0x0000000000003f8c        0x4 src/c/task_manager.c.41.o
+ .bss.detail_text.7579
+                0x0000000000003f90      0x100 src/c/task_manager.c.41.o
  .bss.task_lists
-                0x00000000000037b0      0x500 src/c/task_manager.c.41.o
+                0x0000000000004090      0x500 src/c/task_manager.c.41.o
 
 DISCARD
  libc.a(*)
@@ -1470,49 +1475,49 @@ OUTPUT(/Users/alanjohnson/Dev/claude-reminders/build/aplite/pebble-app.elf elf32
  .comment       0x0000000000000000       0x4f src/message_keys.auto.c.41.o
  .comment       0x0000000000000000       0x4f /Users/alanjohnson/Library/Application Support/Pebble SDK/SDKs/4.9.77/toolchain/arm-none-eabi/bin/../lib/gcc/arm-none-eabi/4.7.2/thumb2/crtend.o
 
-.debug_info     0x0000000000000000     0x2503
- .debug_info    0x0000000000000000     0x2069 src/c/task_manager.c.41.o
- .debug_info    0x0000000000002069      0x31a aplite/appinfo.auto.c.41.o
- .debug_info    0x0000000000002383       0x81 aplite/src/resource_ids.auto.c.41.o
- .debug_info    0x0000000000002404       0xff src/message_keys.auto.c.41.o
+.debug_info     0x0000000000000000     0x2599
+ .debug_info    0x0000000000000000     0x20ff src/c/task_manager.c.41.o
+ .debug_info    0x00000000000020ff      0x31a aplite/appinfo.auto.c.41.o
+ .debug_info    0x0000000000002419       0x81 aplite/src/resource_ids.auto.c.41.o
+ .debug_info    0x000000000000249a       0xff src/message_keys.auto.c.41.o
 
-.debug_abbrev   0x0000000000000000      0x50e
- .debug_abbrev  0x0000000000000000      0x3e8 src/c/task_manager.c.41.o
- .debug_abbrev  0x00000000000003e8       0x9e aplite/appinfo.auto.c.41.o
- .debug_abbrev  0x0000000000000486       0x44 aplite/src/resource_ids.auto.c.41.o
- .debug_abbrev  0x00000000000004ca       0x44 src/message_keys.auto.c.41.o
+.debug_abbrev   0x0000000000000000      0x529
+ .debug_abbrev  0x0000000000000000      0x403 src/c/task_manager.c.41.o
+ .debug_abbrev  0x0000000000000403       0x9e aplite/appinfo.auto.c.41.o
+ .debug_abbrev  0x00000000000004a1       0x44 aplite/src/resource_ids.auto.c.41.o
+ .debug_abbrev  0x00000000000004e5       0x44 src/message_keys.auto.c.41.o
 
-.debug_loc      0x0000000000000000      0xa55
- .debug_loc     0x0000000000000000      0xa55 src/c/task_manager.c.41.o
+.debug_loc      0x0000000000000000      0xbad
+ .debug_loc     0x0000000000000000      0xbad src/c/task_manager.c.41.o
 
-.debug_aranges  0x0000000000000000      0x100
+.debug_aranges  0x0000000000000000      0x108
  .debug_aranges
-                0x0000000000000000       0xb8 src/c/task_manager.c.41.o
+                0x0000000000000000       0xc0 src/c/task_manager.c.41.o
  .debug_aranges
-                0x00000000000000b8       0x18 aplite/appinfo.auto.c.41.o
+                0x00000000000000c0       0x18 aplite/appinfo.auto.c.41.o
  .debug_aranges
-                0x00000000000000d0       0x18 aplite/src/resource_ids.auto.c.41.o
+                0x00000000000000d8       0x18 aplite/src/resource_ids.auto.c.41.o
  .debug_aranges
-                0x00000000000000e8       0x18 src/message_keys.auto.c.41.o
+                0x00000000000000f0       0x18 src/message_keys.auto.c.41.o
 
-.debug_ranges   0x0000000000000000      0x180
- .debug_ranges  0x0000000000000000      0x180 src/c/task_manager.c.41.o
+.debug_ranges   0x0000000000000000      0x228
+ .debug_ranges  0x0000000000000000      0x228 src/c/task_manager.c.41.o
 
-.debug_line     0x0000000000000000      0x822
- .debug_line    0x0000000000000000      0x4f3 src/c/task_manager.c.41.o
- .debug_line    0x00000000000004f3      0x15a aplite/appinfo.auto.c.41.o
- .debug_line    0x000000000000064d       0xee aplite/src/resource_ids.auto.c.41.o
- .debug_line    0x000000000000073b       0xe7 src/message_keys.auto.c.41.o
+.debug_line     0x0000000000000000      0x859
+ .debug_line    0x0000000000000000      0x52a src/c/task_manager.c.41.o
+ .debug_line    0x000000000000052a      0x15a aplite/appinfo.auto.c.41.o
+ .debug_line    0x0000000000000684       0xee aplite/src/resource_ids.auto.c.41.o
+ .debug_line    0x0000000000000772       0xe7 src/message_keys.auto.c.41.o
 
-.debug_str      0x0000000000000000     0x12fa
- .debug_str     0x0000000000000000      0xfc6 src/c/task_manager.c.41.o
-                                       0x10ad (size before relaxing)
- .debug_str     0x0000000000000fc6      0x22a aplite/appinfo.auto.c.41.o
+.debug_str      0x0000000000000000     0x134a
+ .debug_str     0x0000000000000000     0x1016 src/c/task_manager.c.41.o
+                                       0x10ff (size before relaxing)
+ .debug_str     0x0000000000001016      0x22a aplite/appinfo.auto.c.41.o
                                         0x31c (size before relaxing)
- .debug_str     0x00000000000011f0       0x3b aplite/src/resource_ids.auto.c.41.o
+ .debug_str     0x0000000000001240       0x3b aplite/src/resource_ids.auto.c.41.o
                                         0x102 (size before relaxing)
- .debug_str     0x000000000000122b       0xcf src/message_keys.auto.c.41.o
+ .debug_str     0x000000000000127b       0xcf src/message_keys.auto.c.41.o
                                         0x196 (size before relaxing)
 
-.debug_frame    0x0000000000000000      0x23c
- .debug_frame   0x0000000000000000      0x23c src/c/task_manager.c.41.o
+.debug_frame    0x0000000000000000      0x270
+ .debug_frame   0x0000000000000000      0x270 src/c/task_manager.c.41.o

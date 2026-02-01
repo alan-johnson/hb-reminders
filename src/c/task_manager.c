@@ -95,6 +95,7 @@ static void fetch_task_lists_testing(void);
 static void fetch_task_lists(void);
 static void fetch_task_lists_testing(void);
 static void fetch_tasks(const char *list_name);
+static void fetch_tasks_testing(void);
 static void complete_task(const char *task_id, const char *list_name);
 static void show_task_detail(void);
 
@@ -319,6 +320,108 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 }
 
 // API functions
+#ifdef TESTING
+static void fetch_task_lists_testing(void) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_task_lists_testing called");
+  
+  task_lists_count = 14;
+  for (int i = 0; i < task_lists_count; i++) {
+    snprintf(task_lists[i].name, sizeof(task_lists[i].name), "%s", task_lists_str[i]);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "added list name: %s", task_lists[i].name);
+  }
+  if (s_lists_menu) menu_layer_reload_data(s_lists_menu);
+}
+
+static void fetch_tasks_testing(void) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_tasks_testing called");
+  
+  // Sample task names
+  const char* sample_names[] = {
+    "Complete project report",
+    "Buy groceries",
+    "Call dentist",
+    "Review code changes",
+    "Schedule meeting",
+    "Fix bug in login",
+    "Update documentation",
+    "Pay bills",
+    "Organize files",
+    "Send email to team",
+    "Create presentation",
+    "Test new feature",
+    "Refactor database",
+    "Plan vacation",
+    "Clean desk",
+    "Review design mockups",
+    "Deploy to production",
+    "Setup development environment",
+    "Update dependencies",
+    "Write unit tests",
+    "Backup important files",
+    "Schedule dentist appointment",
+    "Renew subscription",
+    "Review analytics",
+    "Optimize performance",
+    "Fix CSS styling",
+    "Add error handling",
+    "Create user manual",
+    "Attend standup meeting",
+    "Update status report",
+    "Research new tools",
+    "Configure CI/CD pipeline",
+    "Interview candidates",
+    "Approve pull requests",
+    "Update project roadmap",
+    "Plan sprint",
+    "Write blog post",
+    "Record tutorial video",
+    "Optimize queries",
+    "Add logging",
+    "Review security",
+    "Plan architecture",
+    "Migrate data",
+    "Setup monitoring",
+    "Create dashboard",
+    "Document API",
+    "Test edge cases",
+    "Improve UX",
+    "Add caching",
+    "Configure webhook"
+  };
+  
+  // Sample due dates
+  const char* sample_dates[] = {
+    "2026-02-01", "2026-02-05", "2026-02-10", "2026-02-15", "2026-02-20",
+    "2026-03-01", "2026-03-05", "2026-03-10", "2026-03-15", "2026-03-20"
+  };
+  
+  tasks_count = 10;
+  for (int i = 0; i < tasks_count; i++) {
+    // Cycle through list indices
+    tasks[i].idx = i % 14;
+    
+    // Generate unique ID
+    snprintf(tasks[i].id, sizeof(tasks[i].id), "task_%d", i);
+    
+    // Assign sample name
+    snprintf(tasks[i].name, sizeof(tasks[i].name), "%s", sample_names[i % 50]);
+    
+    // Assign priority (0-3)
+    tasks[i].priority = i % 4;
+    
+    // Assign due date
+    snprintf(tasks[i].due_date, sizeof(tasks[i].due_date), "%s", sample_dates[i % 10]);
+    
+    // Roughly 30% completed
+    tasks[i].completed = (i % 10 < 3) ? true : false;
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "added task: %s (list idx: %d)", tasks[i].name, tasks[i].idx);
+  }
+  
+  if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
+}
+#endif
+
 static void fetch_task_lists(void) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_task_lists called");
 
@@ -329,6 +432,8 @@ static void fetch_task_lists(void) {
 }
 
 static void fetch_tasks(const char *list_name) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_tasks called for list: %s", list_name);
+
   DictionaryIterator *iter;
   app_message_outbox_begin(&iter);
   dict_write_uint8(iter, KEY_TYPE, 2); // Request tasks
@@ -421,7 +526,12 @@ static void init(void) {
   window_stack_push(s_lists_window, true);
   
   // Fetch initial data
-  fetch_task_lists();
+  #ifdef TESTING
+    fetch_task_lists_testing();
+    fetch_tasks_testing();
+  #else
+    fetch_task_lists();
+  #endif
 }
 
 static void deinit(void) {

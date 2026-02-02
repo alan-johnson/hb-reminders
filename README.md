@@ -1,4 +1,4 @@
-# Pebble Reminders
+# Claude Reminders
 
 A card-based task management application for Pebble smartwatches that integrates with a REST API.
 
@@ -87,7 +87,9 @@ $ cd reminders-cli
 $ make build-release
 $ cp .build/apple/Products/Release/reminders /usr/local/bin/reminders
 
-### Building the App
+### Building the Watch App
+
+1. Fork the Pebble Reminders project from GitHub, https://github.com/alan-johnson/claude-reminders
 
 1. **Using Pebble SDK locally:**
    ```bash
@@ -113,15 +115,9 @@ $ cp .build/apple/Products/Release/reminders /usr/local/bin/reminders
    - Add a checkmark icon to resources (or remove the icon code)
    - Build and install to your phone
 
-### Creating the Checkmark Icon
-
-Create a simple 25x25 pixel PNG image with a checkmark symbol and save it as `resources/images/checkmark.png`. 
-
-Alternatively, remove the icon code from the C file (lines referencing `s_checkmark_bitmap`).
-
 ## Usage
 
-1. **Launch the app** - Shows all task lists
+1. **Launch the app** - Shows all task list names
 2. **Select a list** - Click SELECT button to view tasks in that list
 3. **Select a task** - Click SELECT button to view task details
 4. **Mark complete** - In task detail view, click SELECT button to mark the task complete
@@ -143,11 +139,12 @@ Mark Complete
 
 ### Changing API Base URL
 
-Edit `app.js` and update the `API_BASE` variable:
+Edit `index.js` and update the `DEFAULT_HOSTNAME` variable:
 
 ```javascript
-var API_BASE = "http://your-api-domain.com/tasks";
+var DEFAULT_HOSTNAME = "your Mac ip address where you are running the python script";
 ```
+Make sure the IP address is not "localhost" or "127.0.0.1". It must be the actual IP address of the Mac that is running the Python server script.
 
 ### Adjusting Data Limits
 
@@ -163,7 +160,8 @@ Modify the `menu_draw_row_callback` function to change how items are displayed.
 ## Troubleshooting
 
 **App not receiving data:**
-- Check that your phone can reach `localhost:8080`
+- Ensure the Python server script is running
+- Check that your phone can reach `http://mac_ip_address:5050/tasks`
 - Ensure the Pebble app on your phone is running
 - Check the JavaScript console logs
 
@@ -178,10 +176,10 @@ Modify the `menu_draw_row_callback` function to change how items are displayed.
 ## Notes
 
 - The app uses AppMessage for communication between watch and phone
-- Data is not persisted on the watch - it's fetched fresh each time
+- Data is not persisted on the watch - it's fetched fresh each time to ensure the data matches up with Reminders
 - Maximum message size limitations may affect very long task names/lists
 - Network connectivity required for all operations
 
 ## License
 
-Free to use and modify for your projects!
+MIT license. Free to use and modify for your projects!

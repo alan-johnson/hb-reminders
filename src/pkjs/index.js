@@ -1,7 +1,7 @@
 // PebbleKit JS - Handles communication between watch and REST API
 console.log('*** JavaScript file loaded! ***');
 
-var hostname = "10.0.0.64";
+var hostname = "localhost";
 var port = 8080;
 var API_BASE = "http://" + hostname + ":" + port + "/tasks";
 
@@ -10,6 +10,16 @@ Pebble.addEventListener('ready', function(e) {
   console.warn('=== PEBBLE READY ===');
   console.log('PebbleKit JS ready!');
   // Don't fetch here, let the watch app request when needed
+  
+  // Send ready signal to watch (KEY_TYPE = 0)
+  Pebble.sendAppMessage({'KEY_TYPE': 0}, 
+    function(e) {
+      console.log('Ready message sent to watch successfully!');
+    },
+    function(e) {
+      console.log('Failed to send ready message to watch');
+    }
+  );
 });
 
 // Listen for messages from the watch
@@ -20,23 +30,25 @@ Pebble.addEventListener('appmessage', function(e) {
   var payload = e.payload;
 
   // Acknowledge receipt of the message
-  e.ack();
+  //e.ack();
 
-  if (payload.KEY_TYPE === 1) {
-    // Fetch task lists
-    console.log('KEY_TYPE 1: Fetching task lists');
-    fetchTaskLists();
-  } else if (payload.KEY_TYPE === 2) {
-    // Fetch tasks for a specific list
-    var listName = payload.KEY_LIST_NAME;
-    console.log('KEY_TYPE 2: Fetching tasks for list:', listName);
-    fetchTasks(listName);
-  } else if (payload.KEY_TYPE === 3) {
-    // Complete a task
-    var taskId = payload.KEY_ID;
-    var listName = payload.KEY_LIST_NAME;
-    console.log('KEY_TYPE 3: Completing task', taskId, 'in list', listName);
-    completeTask(taskId, listName);
+  if (payload[KEY_TYPE] !== undefined) {
+    if (payload.KEY_TYPE === 1) {
+      // Fetch task lists
+      console.log('KEY_TYPE 1: Fetching task lists');
+      fetchTaskLists();
+    } else if (payload.KEY_TYPE === 2) {
+      // Fetch tasks for a specific list
+      var listName = payload.KEY_LIST_NAME;
+      console.log('KEY_TYPE 2: Fetching tasks for list:', listName);
+      fetchTasks(listName);
+    } else if (payload.KEY_TYPE === 3) {
+      // Complete a task
+      var taskId = payload.KEY_ID;
+      var listName = payload.KEY_LIST_NAME;
+      console.log('KEY_TYPE 3: Completing task', taskId, 'in list', listName);
+      completeTask(taskId, listName);
+    }
   }
 });
 

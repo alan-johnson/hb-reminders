@@ -37,8 +37,10 @@ static Task tasks[50];
 static int tasks_count = 0;
 static int selected_list_index = 0;
 static int selected_task_index = 0;
+static bool js_ready = false;  // set when JS signals it's ready
 
-#define TESTING 1
+
+//#define TESTING 1
 #ifdef TESTING
 static const char *task_lists_testing[] = {
   "Personal",
@@ -258,8 +260,17 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   
   if (type_tuple) {
     int type = type_tuple->value->int32;
-    
+
     switch(type) {
+      case 0: { // JS ready signal
+        APP_LOG(APP_LOG_LEVEL_INFO, "JavaScript is ready!");
+        js_ready = true;
+        // Now fetch task lists if we're on the lists window
+        if (current_state == STATE_TASK_LISTS) {
+          fetch_task_lists();
+        }
+        break;
+      }
       case 1: { // Task list names
         APP_LOG(APP_LOG_LEVEL_DEBUG, "inbox, received list name");
         Tuple *name_tuple = dict_find(iterator, KEY_NAME);
@@ -430,6 +441,7 @@ static void fetch_task_lists(void) {
   }
 
   // Send a test message with more data to verify format
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Sending KEY_TYPE = 1");
   dict_write_uint8(iter, KEY_TYPE, 1);
 
   result = app_message_outbox_send();
@@ -507,12 +519,26 @@ static void lists_window_load(Window *window) {
   // Reset count before fetching task lists
   task_lists_count = 0;
 
+  /*
   // Fetch initial data now that menu is ready
   #ifdef TESTING
     fetch_task_lists_testing();
   #else
     fetch_task_lists();
   #endif
+  */
+  
+  // Fetch initial data now that menu is ready
+#ifdef TESTING
+  fetch_task_lists_testing();
+#else
+  // Only fetch if JS is ready, otherwise wait for ready signal
+  if (js_ready) {
+    fetch_task_lists();
+  } else {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Waiting for JavaScript to be ready...");
+  }
+#endif
 }
 
 static void lists_window_unload(Window *window) {

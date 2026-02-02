@@ -171,11 +171,18 @@ static time_t convert_iso_to_time_t(const char* iso_date_str) {
 // Tasks menu callbacks
 static uint16_t tasks_menu_get_num_rows(MenuLayer *menu_layer, uint16_t section_index, void *data) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_get_num_rows called");
-  return tasks_count;
+  // Return at least 1 row to display "No tasks" message when list is empty
+  return tasks_count > 0 ? tasks_count : 1;
 }
 
 static void tasks_menu_draw_row(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_draw_row called for row %d", cell_index->row);
+  
+  if (tasks_count == 0) {
+    menu_cell_basic_draw(ctx, cell_layer, "No tasks", "No tasks in list", NULL);
+    return;
+  }
+
   if (cell_index->row < tasks_count) {
     Task *task = &tasks[cell_index->row];
     time_t due_time = convert_iso_to_time_t(task->due_date);
@@ -197,6 +204,12 @@ static void tasks_menu_draw_row(GContext* ctx, const Layer *cell_layer, MenuInde
 
 static void tasks_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_select called for row %d", cell_index->row);
+
+  // Don't open detail view if there are no tasks
+  if (tasks_count == 0) {
+    return;
+  }
+
   selected_task_index = cell_index->row;
   show_task_detail();
 }
@@ -388,7 +401,10 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 
           tasks_count++;
           if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
-        }
+        } else {
+          APP_LOG(APP_LOG_LEVEL_ERROR, "Missing task data or task limit reached");
+          tasks_count = 0;
+        } 
         break;
       }
     }
@@ -603,15 +619,6 @@ static void lists_window_load(Window *window) {
   // Reset count before fetching task lists
   task_lists_count = 0;
 
-  /*
-  // Fetch initial data now that menu is ready
-  #ifdef TESTING
-    fetch_task_lists_testing();
-  #else
-    fetch_task_lists();
-  #endif
-  */
-  
   // Fetch initial data now that menu is ready
 #ifdef TESTING
   fetch_task_lists_testing();

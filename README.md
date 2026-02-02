@@ -59,6 +59,7 @@ For the above, the ```hostip``` value must be the ip address of the computer run
 ## Setup Instructions
 
 ### Prerequisites
+- Python version 3.13, must be less than 3.14 as this is not currently supported by the Pebble SDK.
 - Pebble SDK installed
 - CloudPebble account (alternative to locally installed Pebble SDK)
 - Your REST API running on `hostip_address:5050`
@@ -86,6 +87,15 @@ Building manually
 $ cd reminders-cli
 $ make build-release
 $ cp .build/apple/Products/Release/reminders /usr/local/bin/reminders
+
+#### Installing and starting the server
+- Open terminal then change directory to the claude-reminders project
+- Change directory to `server-py` 
+- Run `pip install -r requirements.txt`
+- The Python packages for the server script should download
+- Copy the reminders-cli (`remdinders`) application to the `server-py` directory within the claude-reminders project directoy.
+- Run the reminders-cli application, `reminders`
+- Accept to allow connections to the Reminders application on your Mac.
 
 ### Building the Watch App
 

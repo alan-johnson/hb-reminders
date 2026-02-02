@@ -182,4 +182,4 @@ Modify the `menu_draw_row_callback` function to change how items are displayed.
 
 ## License
 
-MIT license. Free to use and modify for your projects!
+MIT license. See LICENSE.txt

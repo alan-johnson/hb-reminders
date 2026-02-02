@@ -97,7 +97,7 @@
 	// PebbleKit JS - Handles communication between watch and REST API
 	console.log('*** JavaScript file loaded! ***');
 	
-	var hostname = "localhost";
+	var hostname = "127.0.0.1";
 	var port = 5050;
 	var API_BASE = "http://" + hostname + ":" + port + "/tasks";
 	
@@ -200,14 +200,14 @@
 	  console.log('Fetching tasks for list from API: ' + listName);
 	
 	  var xhr = new XMLHttpRequest();
-	  xhr.open('GET', API_BASE + '/' + encodeURIComponent(listName), true);
+	  xhr.open('GET', API_BASE + '/lists/' + encodeURIComponent(listName), true);
 	  xhr.onload = function() {
 	    if (xhr.readyState === 4) {
 	      if (xhr.status === 200) {
 	        try {
 	          var response = JSON.parse(xhr.responseText);
 	          console.log('Received tasks:', JSON.stringify(response));
-	          sendTasksToWatch(response.tasks);
+	          sendTasksToWatch(response);
 	        } catch (e) {
 	          console.log('Error parsing response:', e);
 	        }
@@ -226,12 +226,12 @@
 	    var task = tasks[i];
 	    var dict = {
 	      'KEY_TYPE': 2,
-	      'KEY_ID': task.id || '',
-	      'KEY_IDX': i,
-	      'KEY_NAME': task.name || task.title || '',
+	      'KEY_ID': task.externalId || '',
+	      'KEY_IDX': task.id || 0,
+	      'KEY_NAME': task.title || '',
 	      'KEY_PRIORITY': task.priority || 0,
-	      'KEY_DUE_DATE': task.dueDate || task.due_date || 'No due date',
-	      'KEY_COMPLETED': task.completed ? 1 : 0
+	      'KEY_DUE_DATE': task.dueDate || 'No due date',
+	      'KEY_COMPLETED': task.isCompleted ? 1 : 0
 	    };
 	    
 	    Pebble.sendAppMessage(dict,

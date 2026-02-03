@@ -76,6 +76,9 @@ static const char *task_lists_testing[] = {
 #define KEY_IDX 6
 #define KEY_PRIORITY 7
 
+// Localization strings
+#define STR_NO_DUE_DATE "No due date"
+
 // Function prototypes
 static void fetch_task_lists(void);
 static void fetch_tasks(const char *list_name);
@@ -86,6 +89,7 @@ static void tasks_window_unload(Window *window);
 static void lists_window_load(Window *window);
 static void lists_window_unload(Window *window);
 static time_t convert_iso_to_time_t(const char* iso_date_str);
+static void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t buffer_size);
 static void detail_click_config_provider(void *context);
 static void detail_select_click_handler(ClickRecognizerRef recognizer, void *context);
 static void detail_up_click_handler(ClickRecognizerRef recognizer, void *context);
@@ -172,6 +176,34 @@ static time_t convert_iso_to_time_t(const char* iso_date_str) {
     return timestamp;
 }
 
+static void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t buffer_size) {
+  // Check if the date string is "No due date"
+  if (strcmp(iso_date_str, STR_NO_DUE_DATE) == 0) {
+    snprintf(buffer, buffer_size, STR_NO_DUE_DATE);
+    return;
+  }
+
+  time_t timestamp = convert_iso_to_time_t(iso_date_str);
+  if (timestamp == (time_t)-1) {
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "convert_iso_to_time_t failed for date: %s", iso_date_str);
+
+    snprintf(buffer, buffer_size, "Invalid date");
+    return;
+  }
+
+  struct tm *local_time = localtime(&timestamp);
+
+  // Format the time and date based on user preference
+  if (clock_is_24h_style()) {
+    // 24-hour format: "Mon Feb 15 14:30"
+    strftime(buffer, sizeof(buffer), "%a %b %d %H:%M", local_time);
+  } else {
+    // 12-hour format with AM/PM: "Mon Feb 15 2:30 PM"
+    strftime(buffer, sizeof(buffer), "%a %b %d %I:%M %p", local_time);
+  }
+
+}
+
 // Tasks menu callbacks
 static uint16_t tasks_menu_get_num_rows(MenuLayer *menu_layer, uint16_t section_index, void *data) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_get_num_rows called");
@@ -189,6 +221,8 @@ static void tasks_menu_draw_row(GContext* ctx, const Layer *cell_layer, MenuInde
 
   if (cell_index->row < tasks_count) {
     Task *task = &tasks[cell_index->row];
+    convert_iso_to_friendly_date(task->due_date, s_time_buffer, sizeof(s_time_buffer));
+    /*
     time_t due_time = convert_iso_to_time_t(task->due_date);
     struct tm *local_time = localtime(&due_time);
     
@@ -200,8 +234,9 @@ static void tasks_menu_draw_row(GContext* ctx, const Layer *cell_layer, MenuInde
       // 12-hour format with AM/PM: "Mon Feb 15 2:30 PM"
       strftime(s_time_buffer, sizeof(s_time_buffer), "%a %b %d %I:%M %p", local_time);
     }
+    */
 
-    const char *subtitle = task->completed ? "✓ Completed" : s_time_buffer;
+    const char *subtitle = task->completed ? "Completed" : s_time_buffer;
     menu_cell_basic_draw(ctx, cell_layer, task->name, subtitle, NULL);
   }
 }
@@ -329,9 +364,10 @@ static void detail_select_click_handler(ClickRecognizerRef recognizer, void *con
 
     // Update display
     static char detail_text[256];
+    convert_iso_to_friendly_date(task->due_date, s_time_buffer, sizeof(s_time_buffer));
     snprintf(detail_text, sizeof(detail_text),
              "Task: %s\n\nDue: %s\n\nStatus: Completed ✓",
-             task->name, task->due_date);
+             task->name, s_time_buffer);
     text_layer_set_text(s_detail_text_layer, detail_text);
 
     // Update scroll layer content size

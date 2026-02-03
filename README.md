@@ -1,8 +1,8 @@
 # Claude Reminders
 
-A card-based task management application for Pebble smartwatches that integrates with a REST API.
+A task management application for Pebble smartwatches that works with Apple Reminders. Features include a card style view of lists and task for easier navigation on the Pebble watch. Marking tasks as completed on the Pebble watch and having the completion status sync'd to the Reminders app on the Mac.
 
-This only connects to Apple Reminders on a Mac.
+*Note: This only connects to Apple Reminders on a Mac over a local connection.*
 
 ## Features
 
@@ -23,7 +23,7 @@ server.py          - Python script to receive API calls from the index.js script
 
 ## API Endpoints
 
-The app expects the following REST API endpoints:
+The watch app communicates with a Python server from a PebbleKit JavaScript script. The Python server exposes the following REST api endpoints:
 
 1. **GET** `http://hostip:5050/tasks/lists`
    - Returns an array of task list names
@@ -60,42 +60,47 @@ For the above, the ```hostip``` value must be the ip address of the computer run
 
 ### Prerequisites
 - Python version 3.13, must be less than 3.14 as this is not currently supported by the Pebble SDK.
+- pip must be installed. Latest version tested is **pip 25.3**.
+- The reminders-cli application, available from the [GitHub link](https://github.com/keith/reminders-cli/releases)
+	- You can download the executable or, if desired, download the code and compile the application. Instructions are on the reminders-cli GitHub repository.
+- The IP address of your Mac
+
+#### Developer prerequistites
 - Pebble SDK installed
-- CloudPebble account (alternative to locally installed Pebble SDK)
+	- Instructions at the [RePebble Developer Site](https://developer.repebble.com/sdk/)
+- OR
+	- Create a GitHub account and use Pebble's GitHub Cloudspaces, [Pebble Cloudspace information](https://developer.repebble.com/sdk/cloud)
 - Your REST API running on `hostip_address:5050`
 - The `reminders-cli` command line interface (cli) application.
 
-#### Getting the reminders cli application
-##### With Homebrew
+## Installation Steps
+1. Fork and download the GitHub project at [Claude Reminders GitHub repository](https://github.com/alan-johnson/claude-reminders).
+2. Open a Terminal window.
+3. Change to the `claude-reminders` directory where you put the forked GitHub project.
 
-`$ brew install keith/formulae/reminders-cli`
+### Steps to Start the Python server
 
-##### From GitHub releases
-
-Download the latest release from [here](https://github.com/keith/reminders-cli/releases)
-
-```
-$ tar -zxvf reminders.tar.gz
-$ mv reminders /usr/local/bin
-$ rm reminders.tar.gz
-```
-
-Building manually
-
-*This requires a recent Xcode installation.*
-
-$ cd reminders-cli
-$ make build-release
-$ cp .build/apple/Products/Release/reminders /usr/local/bin/reminders
+1. Ensure you have Python version 3.13 installed.
+	`python --version`
+2. Install the Python requirements.
+	`pip install -r requirements.txt`
+3. In the `claude-reminders/server-py` directory, edit the file `config.py`.
+4. In the `config.py` file, change the value of `host_port` if `5050` conflicts with another application on your Mac.
+	
+	```
+	hostInfo = dict(  
+      host_ip = '127.0.0.1',  <- enter your Mac IP  
+      host_port = '5050',     <- leave by default unless it conflicts with an existing application using port 5050  
+)
+	```
 
 #### Installing and starting the server
-- Open terminal then change directory to the claude-reminders project
-- Change directory to `server-py` 
-- Run `pip install -r requirements.txt`
-- The Python packages for the server script should download
-- Copy the reminders-cli (`remdinders`) application to the `server-py` directory within the claude-reminders project directoy.
-- Run the reminders-cli application, `reminders`
-- Accept to allow connections to the Reminders application on your Mac.
+1. In the `claude-reminders\server-py` directory, run the following in Terminal:
+	- `pip install -r requirements.txt`
+2. The Python packages for the server script should download.
+3. Copy the reminders-cli (`reminders`) application to the `claude-reminders\server-py` project directory.
+4. Run the reminders-cli application, `reminders`
+5. Accept to allow connections to the Reminders application on your Mac.
 
 ### Building the Watch App
 
@@ -111,6 +116,7 @@ $ cp .build/apple/Products/Release/reminders /usr/local/bin/reminders
    edit index.js file to update DEFAULT_HOSTNAME value, `src/pkjs/index.js`
       
    # Build and install
+   ```
    pebble build
    pebble install --phone <PHONE_IP>
    ```

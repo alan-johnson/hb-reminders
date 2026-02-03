@@ -1,10 +1,9 @@
 from flask import Flask, jsonify, request
 import subprocess
-# import caldav
-# import requests
 import json
 from urllib.parse import quote
 from datetime import datetime
+import config
 
 class Task:
     def __init__(self, id, title, completed, due):
@@ -324,8 +323,8 @@ def update():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050)
-
+    app.run(host="0.0.0.0", port=config.hostInfo['host_port'])
+    
 
 #curl -X POST http://127.0.0.1:8080/tasks/complete \
 #     -H "Content-Type: application/json" \

@@ -97,9 +97,16 @@
 	// PebbleKit JS - Handles communication between watch and REST API
 	console.log('*** JavaScript file loaded! ***');
 	
-	var hostname = "10.0.0.64";
-	var port = 5050;
+	// Configuration - can be overridden via localStorage
+	var DEFAULT_HOSTNAME = "10.0.0.64";
+	var DEFAULT_PORT = 5050;
+	
+	// Try to load from localStorage, fallback to defaults
+	var hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+	var port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
 	var API_BASE = "http://" + hostname + ":" + port + "/tasks";
+	
+	console.log('Using API:', API_BASE);
 	
 	// Listen for when the app is ready
 	Pebble.addEventListener('ready', function(e) {

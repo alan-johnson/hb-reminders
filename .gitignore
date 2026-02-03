@@ -24,3 +24,7 @@ Network Trash Folder
 Temporary Items
 .apdisk
 node_modules/
+
+# Directories used in Pebble SDK development
+build/
+server-py/__pycache__/

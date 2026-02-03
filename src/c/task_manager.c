@@ -366,7 +366,7 @@ static void detail_select_click_handler(ClickRecognizerRef recognizer, void *con
     static char detail_text[256];
     convert_iso_to_friendly_date(task->due_date, s_time_buffer, sizeof(s_time_buffer));
     snprintf(detail_text, sizeof(detail_text),
-             "Task: %s\n\nDue: %s\n\nStatus: Completed ✓",
+             "Task: %s\n\nDue: %s\n\nStatus: Completed",
              task->name, s_time_buffer);
     text_layer_set_text(s_detail_text_layer, detail_text);
 
@@ -452,7 +452,7 @@ static void show_task_detail(void) {
            "Task: %s\n\nDue: %s\n\nStatus: %s\n\nSelect to mark complete", 
            task->name, 
            s_time_buffer,
-           task->completed ? "Completed ✓" : "Pending");
+           task->completed ? "Completed" : "Pending");
   
   // Push window to stack (this will trigger the load callback which sets the text and click config)
   window_stack_push(s_detail_window, true);

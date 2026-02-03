@@ -86,6 +86,10 @@ static void tasks_window_unload(Window *window);
 static void lists_window_load(Window *window);
 static void lists_window_unload(Window *window);
 static time_t convert_iso_to_time_t(const char* iso_date_str);
+static void detail_click_config_provider(void *context);
+static void detail_select_click_handler(ClickRecognizerRef recognizer, void *context);
+static void detail_up_click_handler(ClickRecognizerRef recognizer, void *context);
+static void detail_down_click_handler(ClickRecognizerRef recognizer, void *context);
 #ifdef TESTING
 static void fetch_task_lists_testing(void);
 static void fetch_tasks_testing(void);
@@ -216,6 +220,7 @@ static void tasks_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void
 
 // Task detail window
 static Window *s_detail_window;
+static ScrollLayer *s_scroll_layer;
 static TextLayer *s_detail_text_layer;
 static ActionBarLayer *s_action_bar;
 static GBitmap *s_checkmark_bitmap;
@@ -224,35 +229,91 @@ static char s_detail_text[256];
 static void detail_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
-  
-  // Create text layer for task details
-  s_detail_text_layer = text_layer_create(GRect(0, 10, bounds.size.w - ACTION_BAR_WIDTH, bounds.size.h - 20));
-  // if round display, center align text
-  //  otherwise left align
-  #if defined(PBL_ROUND)
-  // Specific code for Round display (180x180)
-  text_layer_set_text_alignment(s_detail_text_layer, GTextAlignmentCenter);
-  #elif defined(PBL_RECT)
-  // Specific code for Rectangular display
-  text_layer_set_text_alignment(s_detail_text_layer, GTextAlignmentLeft);
-  #endif
-  text_layer_set_overflow_mode(s_detail_text_layer, GTextOverflowModeWordWrap);
-  text_layer_set_text(s_detail_text_layer, s_detail_text);
-  layer_add_child(window_layer, text_layer_get_layer(s_detail_text_layer));
-  
-  // Create action bar
+
+  // Create action bar first so we can get proper unobstructed bounds
   s_action_bar = action_bar_layer_create();
   action_bar_layer_add_to_window(s_action_bar, window);
-  
+
   // Load icon
   s_checkmark_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_CHECKMARK);
   action_bar_layer_set_icon(s_action_bar, BUTTON_ID_SELECT, s_checkmark_bitmap);
+
+  // Get bounds accounting for action bar
+  GRect scroll_bounds;
+  #if defined(PBL_ROUND)
+  // For round displays, start at origin and account for action bar
+  // Don't use unobstructed origin to avoid positioning issues
+  int16_t scroll_width = bounds.size.w - ACTION_BAR_WIDTH - 10; // Extra margin for action bar
+  scroll_bounds = GRect(0, 0, scroll_width, bounds.size.h);
+  #else
+  // For rectangular displays, account for action bar width
+  scroll_bounds = GRect(0, 0, bounds.size.w - ACTION_BAR_WIDTH, bounds.size.h);
+  #endif
+
+  // Create scroll layer
+  s_scroll_layer = scroll_layer_create(scroll_bounds);
+  // Don't set click config here - we'll do it manually in the provider to avoid conflicts
+
+  // Enable scroll layer content indicator (shows scroll position)
+  #ifdef PBL_COLOR
+  scroll_layer_set_shadow_hidden(s_scroll_layer, false);
+  #endif
+
+  // Create text layer for task details with padding
+  #if defined(PBL_ROUND)
+  // For round, use generous padding on all sides to avoid clipping at curved edges
+  // Horizontal padding needs to be larger to account for the circular display
+  int padding_horizontal = 25; // Larger horizontal padding for round edges
+  int padding_vertical = 20;   // Vertical padding for top/bottom
+  GRect text_bounds = GRect(padding_horizontal, padding_vertical,
+                            scroll_bounds.size.w - (2 * padding_horizontal),
+                            2000); // Large height for scrolling
+  #else
+  // For rectangular, standard padding
+  GRect text_bounds = GRect(8, 5, scroll_bounds.size.w - 16, 2000);
+  #endif
+
+  s_detail_text_layer = text_layer_create(text_bounds);
+
+  // Set text alignment based on display type
+  #if defined(PBL_ROUND)
+  text_layer_set_text_alignment(s_detail_text_layer, GTextAlignmentCenter);
+  #else
+  text_layer_set_text_alignment(s_detail_text_layer, GTextAlignmentLeft);
+  #endif
+
+  text_layer_set_overflow_mode(s_detail_text_layer, GTextOverflowModeWordWrap);
+  text_layer_set_text(s_detail_text_layer, s_detail_text);
+
+  // Get the actual content size after setting text
+  GSize text_size = text_layer_get_content_size(s_detail_text_layer);
+  text_layer_set_size(s_detail_text_layer, text_size);
+
+  // Set the scroll layer content size
+  // Must account for the text layer's y offset (top padding) plus bottom padding
+  #if defined(PBL_ROUND)
+  int16_t content_height = padding_vertical + text_size.h + padding_vertical;
+  #else
+  int16_t content_height = 5 + text_size.h + 10; // top padding + text + bottom padding
+  #endif
+  scroll_layer_set_content_size(s_scroll_layer,
+                                 GSize(scroll_bounds.size.w, content_height));
+
+  // Add text layer to scroll layer
+  scroll_layer_add_child(s_scroll_layer, text_layer_get_layer(s_detail_text_layer));
+
+  // Add scroll layer to window
+  layer_add_child(window_layer, scroll_layer_get_layer(s_scroll_layer));
+
+  // Set up click config provider with scroll layer as context
+  window_set_click_config_provider_with_context(window, detail_click_config_provider, s_scroll_layer);
 }
 
 static void detail_window_unload(Window *window) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "detail_window_unload called");
-  
+
   text_layer_destroy(s_detail_text_layer);
+  scroll_layer_destroy(s_scroll_layer);
   action_bar_layer_destroy(s_action_bar);
   gbitmap_destroy(s_checkmark_bitmap);
   window_destroy(s_detail_window);
@@ -265,26 +326,72 @@ static void detail_select_click_handler(ClickRecognizerRef recognizer, void *con
     // Mark task as complete
     complete_task(task->idx, task_lists[selected_list_index].name);
     task->completed = true;
-    
+
     // Update display
     static char detail_text[256];
-    snprintf(detail_text, sizeof(detail_text), 
-             "Task: %s\n\nDue: %s\n\nStatus: Completed ✓", 
+    snprintf(detail_text, sizeof(detail_text),
+             "Task: %s\n\nDue: %s\n\nStatus: Completed ✓",
              task->name, task->due_date);
     text_layer_set_text(s_detail_text_layer, detail_text);
-    
+
+    // Update scroll layer content size
+    GSize text_size = text_layer_get_content_size(s_detail_text_layer);
+    text_layer_set_size(s_detail_text_layer, text_size);
+    GRect scroll_bounds = layer_get_bounds(scroll_layer_get_layer(s_scroll_layer));
+
+    // Account for padding (same calculation as in detail_window_load)
+    #if defined(PBL_ROUND)
+    int padding_vertical = 20;
+    int16_t content_height = padding_vertical + text_size.h + padding_vertical;
+    #else
+    int16_t content_height = 5 + text_size.h + 10;
+    #endif
+    scroll_layer_set_content_size(s_scroll_layer,
+                                   GSize(scroll_bounds.size.w, content_height));
+
     // Update the tasks list
     if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
   }
 }
 
-static void detail_back_click_handler(ClickRecognizerRef recognizer, void *context) {
-  window_stack_pop(true);
+// Back button handler no longer needed - window stack handles this automatically
+// static void detail_back_click_handler(ClickRecognizerRef recognizer, void *context) {
+//   window_stack_pop(true);
+// }
+
+static void detail_up_click_handler(ClickRecognizerRef recognizer, void *context) {
+  // Scroll up by moving content offset down (more content visible at top)
+  ScrollLayer *scroll_layer = (ScrollLayer *)context;
+  GPoint offset = scroll_layer_get_content_offset(scroll_layer);
+  offset.y += 20; // Scroll up 20 pixels
+  if (offset.y > 0) offset.y = 0; // Don't scroll past the top
+  scroll_layer_set_content_offset(scroll_layer, offset, true);
+}
+
+static void detail_down_click_handler(ClickRecognizerRef recognizer, void *context) {
+  // Scroll down by moving content offset up (more content visible at bottom)
+  ScrollLayer *scroll_layer = (ScrollLayer *)context;
+  GPoint offset = scroll_layer_get_content_offset(scroll_layer);
+  GSize content_size = scroll_layer_get_content_size(scroll_layer);
+  GRect frame = layer_get_frame(scroll_layer_get_layer(scroll_layer));
+
+  offset.y -= 20; // Scroll down 20 pixels
+  int16_t min_offset = frame.size.h - content_size.h;
+  if (min_offset > 0) min_offset = 0; // If content fits, don't scroll
+  if (offset.y < min_offset) offset.y = min_offset; // Don't scroll past the bottom
+  scroll_layer_set_content_offset(scroll_layer, offset, true);
 }
 
 static void detail_click_config_provider(void *context) {
+  // Set up SELECT button for action bar
   window_single_click_subscribe(BUTTON_ID_SELECT, detail_select_click_handler);
-  window_single_click_subscribe(BUTTON_ID_BACK, detail_back_click_handler);
+
+  // Set up UP and DOWN buttons for scrolling
+  window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, detail_up_click_handler);
+  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, detail_down_click_handler);
+
+  // BACK button is handled automatically by window stack
+  // window_single_click_subscribe(BUTTON_ID_BACK, detail_back_click_handler);
 }
 
 static void show_task_detail(void) {
@@ -319,13 +426,8 @@ static void show_task_detail(void) {
            s_time_buffer,
            task->completed ? "Completed ✓" : "Pending");
   
-  // Push window to stack (this will trigger the load callback which sets the text)
+  // Push window to stack (this will trigger the load callback which sets the text and click config)
   window_stack_push(s_detail_window, true);
-  
-  // Set click config provider
-  if (s_action_bar) {
-    action_bar_layer_set_click_config_provider(s_action_bar, detail_click_config_provider);
-  }
 }
 
 // AppMessage handlers

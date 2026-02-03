@@ -1514,11 +1514,11 @@ OUTPUT(/Users/alanjohnson/Dev/claude-reminders/build/aplite/pebble-app.elf elf32
 .debug_ranges   0x0000000000000000      0x140
  .debug_ranges  0x0000000000000000      0x140 src/c/task_manager.c.49.o
 
-.debug_line     0x0000000000000000      0x952
- .debug_line    0x0000000000000000      0x623 src/c/task_manager.c.49.o
- .debug_line    0x0000000000000623      0x15a aplite/appinfo.auto.c.49.o
- .debug_line    0x000000000000077d       0xee aplite/src/resource_ids.auto.c.49.o
- .debug_line    0x000000000000086b       0xe7 src/message_keys.auto.c.49.o
+.debug_line     0x0000000000000000      0x94e
+ .debug_line    0x0000000000000000      0x61f src/c/task_manager.c.49.o
+ .debug_line    0x000000000000061f      0x15a aplite/appinfo.auto.c.49.o
+ .debug_line    0x0000000000000779       0xee aplite/src/resource_ids.auto.c.49.o
+ .debug_line    0x0000000000000867       0xe7 src/message_keys.auto.c.49.o
 
 .debug_str      0x0000000000000000     0x13fb
  .debug_str     0x0000000000000000     0x10c7 src/c/task_manager.c.49.o
@@ -1530,5 +1530,5 @@ OUTPUT(/Users/alanjohnson/Dev/claude-reminders/build/aplite/pebble-app.elf elf32
  .debug_str     0x000000000000132c       0xcf src/message_keys.auto.c.49.o
                                         0x196 (size before relaxing)
 
-.debug_frame    0x0000000000000000      0x2a0
- .debug_frame   0x0000000000000000      0x2a0 src/c/task_manager.c.49.o
+.debug_frame    0x0000000000000000      0x2a8
+ .debug_frame   0x0000000000000000      0x2a8 src/c/task_manager.c.49.o

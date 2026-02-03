@@ -79,7 +79,7 @@ static const char *task_lists_testing[] = {
 // Function prototypes
 static void fetch_task_lists(void);
 static void fetch_tasks(const char *list_name);
-static void complete_task(const char *task_id, const char *list_name);
+static void complete_task(uint8_t task_id, const char *list_name);
 static void show_task_detail(void);
 static void tasks_window_load(Window *window);
 static void tasks_window_unload(Window *window);
@@ -255,7 +255,7 @@ static void detail_select_click_handler(ClickRecognizerRef recognizer, void *con
   Task *task = &tasks[selected_task_index];
   if (!task->completed) {
     // Mark task as complete
-    complete_task(task->id, task_lists[selected_list_index].name);
+    complete_task(task->idx, task_lists[selected_list_index].name);
     task->completed = true;
     
     // Update display
@@ -566,7 +566,7 @@ static void fetch_tasks(const char *list_name) {
   app_message_outbox_send();
 }
 
-static void complete_task(const char *task_id, const char *list_name) {
+static void complete_task(uint8_t task_id, const char *list_name) {
   DictionaryIterator *iter;
   AppMessageResult result = app_message_outbox_begin(&iter);
   if (result != APP_MSG_OK) {
@@ -574,7 +574,7 @@ static void complete_task(const char *task_id, const char *list_name) {
     return;
   }
   dict_write_uint8(iter, KEY_TYPE, 3); // Complete task
-  dict_write_cstring(iter, KEY_ID, task_id);
+  dict_write_uint8(iter, KEY_ID, task_id);
   dict_write_cstring(iter, KEY_LIST_NAME, list_name);
   app_message_outbox_send();
 }

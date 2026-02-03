@@ -1,9 +1,11 @@
+import cmd
 from flask import Flask, jsonify, request
 import subprocess
 import json
 from urllib.parse import quote
 from datetime import datetime
 import config
+import shlex
 
 class Task:
     def __init__(self, id, title, completed, due):
@@ -201,11 +203,13 @@ def get_task_by_list(listname):
 
 @app.route("/tasks/complete", methods=["POST"])
 def complete():
-    data = request.json
+    #data = request.json
+    #print("Data received, request.json:" + str(data))
     # success = complete_task(data["id"])
     # return jsonify({"command": "complete"})
     # Get JSON payload
     data = request.get_json()
+    print("Data received: request.get_json" + str(data))
 
     # Print JSON to console for testing
     #print("Received JSON:", data)
@@ -216,16 +220,21 @@ def complete():
 #        "received": data
 #    }), 200
     cmd = "complete"
-    task_id = data.get("task_id") if data else None
-    listname = data.get("list") if data else None
-    encoded_string = listname
- 
-    command = ["reminders", cmd, encoded_string, task_id] # reminders command and return as json
-    
+    task_id = data.get("taskId") if data else None
+    print("Complete taskId: " + str(task_id))
+    listname = data.get("listName") if data else None
+    print("Complete listName: " + str(listname))
+    #encoded_string = '"' + listname + '"'
+    #command = ["reminders", cmd, encoded_string, task_id] # reminders command and return as json
+    encoded_string = shlex.quote(listname)
+    command = f"reminders {cmd} {encoded_string} {task_id}"
+    print("Running command: " + str(command))
+
     try:
         # Execute the command
         result = subprocess.run(
             command,
+            shell=True,
             capture_output=True, # Capture stdout and stderr
             text=True,           # Decode output as string (Python 3.7+)
             check=True           # Raise exception if the command fails

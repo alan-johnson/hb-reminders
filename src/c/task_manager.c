@@ -1,51 +1,25 @@
 #include <pebble.h>
 #include <time.h>
 #include <stdio.h>
+#include "task_manager.h"
+#include "task_list_view.h"
+#include "task_detail_view.h"
 #include "strings.h"
 
 // Windows
 static Window *s_lists_window;
 static MenuLayer *s_lists_menu;
 
-static Window *s_tasks_window;
-static MenuLayer *s_tasks_menu;
-
-// Navigation state
-typedef enum {
-  STATE_TASK_LISTS,
-  STATE_TASKS,
-  STATE_TASK_DETAIL
-} AppState;
-
-static AppState current_state = STATE_TASK_LISTS;
-
-// Data structures
-typedef struct {
-  char name[64];
-} TaskList;
-
-// structure of apple reminder id field
-//          8     -  4  -  4  -  4  - 12
-//example: 65A7AD7B-F211-4E3D-A892-E47CE8B038B5
-typedef struct {
-  char id[33];        // 33 bytes, 32 chars + null terminator
-  int8_t idx;         // 1 byte 
-  char name[128];     // 128 bytes
-  int8_t priority;    // 1 byte
-  char due_date[32];  // 32 bytes
-  bool completed;     // 1 byte
-} Task;               // total: 196 bytes
-
-// Storage
-static TaskList task_lists[20]; //1280 bytes
-static int task_lists_count = 0;
-static Task tasks[50];  //9800 bytes
-static int tasks_count = 0;
-static int selected_list_index = 0;
-static int selected_task_index = 0;
-static bool js_ready = false;  // set when JS signals it's ready
-// A buffer to hold the time and date string
-static char s_time_buffer[30]; // Large enough for "Day Month DD HH:MM"
+// Global state (definitions for variables declared extern in task_manager.h)
+AppState current_state = STATE_TASK_LISTS;
+TaskList task_lists[20]; //1280 bytes
+int task_lists_count = 0;
+Task tasks[50];  //9800 bytes
+int tasks_count = 0;
+int selected_list_index = 0;
+int selected_task_index = 0;
+bool js_ready = false;  // set when JS signals it's ready
+char s_time_buffer[30]; // Large enough for "Day Month DD HH:MM"
 
 //#define TESTING 1
 #ifdef TESTING
@@ -67,31 +41,9 @@ static const char *task_lists_testing[] = {
 };
 #endif
 
-// API callback keys
-#define KEY_TYPE 0
-#define KEY_NAME 1
-#define KEY_ID 2
-#define KEY_DUE_DATE 3
-#define KEY_COMPLETED 4
-#define KEY_LIST_NAME 5
-#define KEY_IDX 6
-#define KEY_PRIORITY 7
-
 // Function prototypes
-static void fetch_task_lists(void);
-static void fetch_tasks(const char *list_name);
-static void complete_task(uint8_t task_id, const char *list_name);
-static void show_task_detail(void);
-static void tasks_window_load(Window *window);
-static void tasks_window_unload(Window *window);
 static void lists_window_load(Window *window);
 static void lists_window_unload(Window *window);
-static time_t convert_iso_to_time_t(const char* iso_date_str);
-static void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t buffer_size);
-static void detail_click_config_provider(void *context);
-static void detail_select_click_handler(ClickRecognizerRef recognizer, void *context);
-static void detail_up_click_handler(ClickRecognizerRef recognizer, void *context);
-static void detail_down_click_handler(ClickRecognizerRef recognizer, void *context);
 #ifdef TESTING
 static void fetch_task_lists_testing(void);
 static void fetch_tasks_testing(void);
@@ -119,17 +71,18 @@ static void lists_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void
   // Reset tasks count before fetching new list
   tasks_count = 0;
 
-  window_stack_push(s_tasks_window, true);
+  window_stack_push(task_list_view_get_window(), true);
 
   #ifdef TESTING
     fetch_tasks_testing();
   #else
     fetch_tasks(task_lists[selected_list_index].name);
   #endif
-  if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
+  MenuLayer *tasks_menu = task_list_view_get_menu();
+  if (tasks_menu) menu_layer_reload_data(tasks_menu);
 }
 
-static time_t convert_iso_to_time_t(const char* iso_date_str) {
+time_t convert_iso_to_time_t(const char* iso_date_str) {
     if (!iso_date_str || strlen(iso_date_str) < 19) {
         return (time_t)-1;
     }
@@ -174,7 +127,7 @@ static time_t convert_iso_to_time_t(const char* iso_date_str) {
     return timestamp;
 }
 
-static void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t buffer_size) {
+void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t buffer_size) {
   // Check if the date string is "No due date"
   if (strcmp(iso_date_str, STR_NO_DUE_DATE) == 0) {
     snprintf(buffer, buffer_size, STR_NO_DUE_DATE);
@@ -194,269 +147,12 @@ static void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer,
   // Format the time and date based on user preference
   if (clock_is_24h_style()) {
     // 24-hour format: "Mon Feb 15 14:30"
-    strftime(buffer, sizeof(buffer), "%a %b %d %H:%M", local_time);
+    strftime(buffer, buffer_size, "%a %b %d %H:%M", local_time);
   } else {
     // 12-hour format with AM/PM: "Mon Feb 15 2:30 PM"
-    strftime(buffer, sizeof(buffer), "%a %b %d %I:%M %p", local_time);
+    strftime(buffer, buffer_size, "%a %b %d %I:%M %p", local_time);
   }
 
-}
-
-// Tasks menu callbacks
-static uint16_t tasks_menu_get_num_rows(MenuLayer *menu_layer, uint16_t section_index, void *data) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_get_num_rows called");
-  // Return at least 1 row to display "No tasks" message when list is empty
-  return tasks_count > 0 ? tasks_count : 1;
-}
-
-static void tasks_menu_draw_row(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_draw_row called for row %d", cell_index->row);
-  
-  if (tasks_count == 0) {
-    menu_cell_basic_draw(ctx, cell_layer, STR_NO_TASKS, STR_NO_TASKS_IN_LIST, NULL);
-    return;
-  }
-
-  if (cell_index->row < tasks_count) {
-    Task *task = &tasks[cell_index->row];
-    convert_iso_to_friendly_date(task->due_date, s_time_buffer, sizeof(s_time_buffer));
-    /*
-    time_t due_time = convert_iso_to_time_t(task->due_date);
-    struct tm *local_time = localtime(&due_time);
-    
-    // Format the time and date based on user preference
-    if (clock_is_24h_style()) {
-      // 24-hour format: "Mon Feb 15 14:30"
-      strftime(s_time_buffer, sizeof(s_time_buffer), "%a %b %d %H:%M", local_time);
-    } else {
-      // 12-hour format with AM/PM: "Mon Feb 15 2:30 PM"
-      strftime(s_time_buffer, sizeof(s_time_buffer), "%a %b %d %I:%M %p", local_time);
-    }
-    */
-
-    const char *subtitle = task->completed ? STR_COMPLETED : s_time_buffer;
-    menu_cell_basic_draw(ctx, cell_layer, task->name, subtitle, NULL);
-  }
-}
-
-static void tasks_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "tasks_menu_select called for row %d", cell_index->row);
-
-  // Don't open detail view if there are no tasks
-  if (tasks_count == 0) {
-    return;
-  }
-
-  selected_task_index = cell_index->row;
-  show_task_detail();
-}
-
-// Task detail window
-static Window *s_detail_window;
-static ScrollLayer *s_scroll_layer;
-static TextLayer *s_detail_text_layer;
-static ActionBarLayer *s_action_bar;
-static GBitmap *s_checkmark_bitmap;
-static char s_detail_text[256];
-
-static void detail_window_load(Window *window) {
-  Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_bounds(window_layer);
-
-  // Create action bar first so we can get proper unobstructed bounds
-  s_action_bar = action_bar_layer_create();
-  action_bar_layer_add_to_window(s_action_bar, window);
-
-  // Load icon
-  s_checkmark_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_CHECKMARK);
-  action_bar_layer_set_icon(s_action_bar, BUTTON_ID_SELECT, s_checkmark_bitmap);
-
-  // Get bounds accounting for action bar
-  GRect scroll_bounds;
-  #if defined(PBL_ROUND)
-  // For round displays, start at origin and account for action bar
-  // Don't use unobstructed origin to avoid positioning issues
-  int16_t scroll_width = bounds.size.w - ACTION_BAR_WIDTH - 10; // Extra margin for action bar
-  scroll_bounds = GRect(0, 0, scroll_width, bounds.size.h);
-  #else
-  // For rectangular displays, account for action bar width
-  scroll_bounds = GRect(0, 0, bounds.size.w - ACTION_BAR_WIDTH, bounds.size.h);
-  #endif
-
-  // Create scroll layer
-  s_scroll_layer = scroll_layer_create(scroll_bounds);
-  // Don't set click config here - we'll do it manually in the provider to avoid conflicts
-
-  // Enable scroll layer content indicator (shows scroll position)
-  #ifdef PBL_COLOR
-  scroll_layer_set_shadow_hidden(s_scroll_layer, false);
-  #endif
-
-  // Create text layer for task details with padding
-  #if defined(PBL_ROUND)
-  // For round, use generous padding on all sides to avoid clipping at curved edges
-  // Horizontal padding needs to be larger to account for the circular display
-  int padding_horizontal = 25; // Larger horizontal padding for round edges
-  int padding_vertical = 20;   // Vertical padding for top/bottom
-  GRect text_bounds = GRect(padding_horizontal, padding_vertical,
-                            scroll_bounds.size.w - (2 * padding_horizontal),
-                            2000); // Large height for scrolling
-  #else
-  // For rectangular, standard padding
-  GRect text_bounds = GRect(8, 5, scroll_bounds.size.w - 16, 2000);
-  #endif
-
-  s_detail_text_layer = text_layer_create(text_bounds);
-
-  // Set text alignment based on display type
-  #if defined(PBL_ROUND)
-  text_layer_set_text_alignment(s_detail_text_layer, GTextAlignmentCenter);
-  #else
-  text_layer_set_text_alignment(s_detail_text_layer, GTextAlignmentLeft);
-  #endif
-
-  text_layer_set_overflow_mode(s_detail_text_layer, GTextOverflowModeWordWrap);
-  text_layer_set_text(s_detail_text_layer, s_detail_text);
-
-  // Get the actual content size after setting text
-  GSize text_size = text_layer_get_content_size(s_detail_text_layer);
-  text_layer_set_size(s_detail_text_layer, text_size);
-
-  // Set the scroll layer content size
-  // Must account for the text layer's y offset (top padding) plus bottom padding
-  #if defined(PBL_ROUND)
-  int16_t content_height = padding_vertical + text_size.h + padding_vertical;
-  #else
-  int16_t content_height = 5 + text_size.h + 10; // top padding + text + bottom padding
-  #endif
-  scroll_layer_set_content_size(s_scroll_layer,
-                                 GSize(scroll_bounds.size.w, content_height));
-
-  // Add text layer to scroll layer
-  scroll_layer_add_child(s_scroll_layer, text_layer_get_layer(s_detail_text_layer));
-
-  // Add scroll layer to window
-  layer_add_child(window_layer, scroll_layer_get_layer(s_scroll_layer));
-
-  // Set up click config provider with scroll layer as context
-  window_set_click_config_provider_with_context(window, detail_click_config_provider, s_scroll_layer);
-}
-
-static void detail_window_unload(Window *window) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "detail_window_unload called");
-
-  text_layer_destroy(s_detail_text_layer);
-  scroll_layer_destroy(s_scroll_layer);
-  action_bar_layer_destroy(s_action_bar);
-  gbitmap_destroy(s_checkmark_bitmap);
-  window_destroy(s_detail_window);
-  s_detail_window = NULL;
-}
-
-static void detail_select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  Task *task = &tasks[selected_task_index];
-  if (!task->completed) {
-    // Mark task as complete
-    complete_task(task->idx, task_lists[selected_list_index].name);
-    task->completed = true;
-
-    // Update display
-    static char detail_text[256];
-    convert_iso_to_friendly_date(task->due_date, s_time_buffer, sizeof(s_time_buffer));
-    snprintf(detail_text, sizeof(detail_text),
-             "%s%s\n\n%s%s\n\n%s%s",
-             STR_TASK_LABEL, task->name,
-             STR_DUE_LABEL, s_time_buffer,
-             STR_STATUS_LABEL, STR_COMPLETED);
-    text_layer_set_text(s_detail_text_layer, detail_text);
-
-    // Update scroll layer content size
-    GSize text_size = text_layer_get_content_size(s_detail_text_layer);
-    text_layer_set_size(s_detail_text_layer, text_size);
-    GRect scroll_bounds = layer_get_bounds(scroll_layer_get_layer(s_scroll_layer));
-
-    // Account for padding (same calculation as in detail_window_load)
-    #if defined(PBL_ROUND)
-    int padding_vertical = 20;
-    int16_t content_height = padding_vertical + text_size.h + padding_vertical;
-    #else
-    int16_t content_height = 5 + text_size.h + 10;
-    #endif
-    scroll_layer_set_content_size(s_scroll_layer,
-                                   GSize(scroll_bounds.size.w, content_height));
-
-    // Update the tasks list
-    if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
-  }
-}
-
-// Back button handler no longer needed - window stack handles this automatically
-// static void detail_back_click_handler(ClickRecognizerRef recognizer, void *context) {
-//   window_stack_pop(true);
-// }
-
-static void detail_up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // Scroll up by moving content offset down (more content visible at top)
-  ScrollLayer *scroll_layer = (ScrollLayer *)context;
-  GPoint offset = scroll_layer_get_content_offset(scroll_layer);
-  offset.y += 20; // Scroll up 20 pixels
-  if (offset.y > 0) offset.y = 0; // Don't scroll past the top
-  scroll_layer_set_content_offset(scroll_layer, offset, true);
-}
-
-static void detail_down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  // Scroll down by moving content offset up (more content visible at bottom)
-  ScrollLayer *scroll_layer = (ScrollLayer *)context;
-  GPoint offset = scroll_layer_get_content_offset(scroll_layer);
-  GSize content_size = scroll_layer_get_content_size(scroll_layer);
-  GRect frame = layer_get_frame(scroll_layer_get_layer(scroll_layer));
-
-  offset.y -= 20; // Scroll down 20 pixels
-  int16_t min_offset = frame.size.h - content_size.h;
-  if (min_offset > 0) min_offset = 0; // If content fits, don't scroll
-  if (offset.y < min_offset) offset.y = min_offset; // Don't scroll past the bottom
-  scroll_layer_set_content_offset(scroll_layer, offset, true);
-}
-
-static void detail_click_config_provider(void *context) {
-  // Set up SELECT button for action bar
-  window_single_click_subscribe(BUTTON_ID_SELECT, detail_select_click_handler);
-
-  // Set up UP and DOWN buttons for scrolling
-  window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, detail_up_click_handler);
-  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, detail_down_click_handler);
-
-  // BACK button is handled automatically by window stack
-  // window_single_click_subscribe(BUTTON_ID_BACK, detail_back_click_handler);
-}
-
-static void show_task_detail(void) {
- 
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "show_task_detail called");
-  
-  if (!s_detail_window) {
-    s_detail_window = window_create();
-    window_set_window_handlers(s_detail_window, (WindowHandlers) {
-      .load = detail_window_load,
-      .unload = detail_window_unload,
-    });
-  }
-  
-  // Prepare the task details text
-  Task *task = &tasks[selected_task_index];
-
-  // Convert due date to friendly format (handles "No due date" case)
-  convert_iso_to_friendly_date(task->due_date, s_time_buffer, sizeof(s_time_buffer));
-
-  snprintf(s_detail_text, sizeof(s_detail_text),
-           "%s%s\n\n%s%s\n\n%s%s\n\n%s",
-           STR_TASK_LABEL, task->name,
-           STR_DUE_LABEL, s_time_buffer,
-           STR_STATUS_LABEL, task->completed ? STR_COMPLETED : STR_PENDING,
-           STR_SELECT_TO_MARK_COMPLETE);
-  
-  // Push window to stack (this will trigger the load callback which sets the text and click config)
-  window_stack_push(s_detail_window, true);
 }
 
 // AppMessage handlers
@@ -539,7 +235,8 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
           tasks[tasks_count].idx = idx_tuple ? idx_tuple->value->int16 : 0;
 
           tasks_count++;
-          if (s_tasks_menu) menu_layer_reload_data(s_tasks_menu);
+          MenuLayer *tasks_menu = task_list_view_get_menu();
+          if (tasks_menu) menu_layer_reload_data(tasks_menu);
         } else {
           APP_LOG(APP_LOG_LEVEL_ERROR, "Missing task data or task limit reached");
           tasks_count = 0;
@@ -669,7 +366,7 @@ static void fetch_tasks_testing(void) {
 }
 #endif
 
-static void fetch_task_lists(void) {
+void fetch_task_lists(void) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_task_lists called");
 
   DictionaryIterator *iter;
@@ -691,7 +388,7 @@ static void fetch_task_lists(void) {
   }
 }
 
-static void fetch_tasks(const char *list_name) {
+void fetch_tasks(const char *list_name) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "fetch_tasks called for list: %s", list_name);
 
   DictionaryIterator *iter;
@@ -705,7 +402,7 @@ static void fetch_tasks(const char *list_name) {
   app_message_outbox_send();
 }
 
-static void complete_task(uint8_t task_id, const char *list_name) {
+void complete_task(uint8_t task_id, const char *list_name) {
   DictionaryIterator *iter;
   AppMessageResult result = app_message_outbox_begin(&iter);
   if (result != APP_MSG_OK) {
@@ -719,29 +416,6 @@ static void complete_task(uint8_t task_id, const char *list_name) {
 }
 
 // Main window
-static void tasks_window_unload(Window *window) {
-  // When tasks window is closed we should return to lists state
-  current_state = STATE_TASK_LISTS;
-  if (s_tasks_menu) {
-    menu_layer_destroy(s_tasks_menu);
-    s_tasks_menu = NULL;
-  }
-}
-
-static void tasks_window_load(Window *window) {
-  Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_bounds(window_layer);
-
-  s_tasks_menu = menu_layer_create(bounds);
-  menu_layer_set_callbacks(s_tasks_menu, NULL, (MenuLayerCallbacks){
-    .get_num_rows = tasks_menu_get_num_rows,
-    .draw_row = tasks_menu_draw_row,
-    .select_click = tasks_menu_select,
-  });
-  menu_layer_set_click_config_onto_window(s_tasks_menu, window);
-  layer_add_child(window_layer, menu_layer_get_layer(s_tasks_menu));
-}
-
 static void lists_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
@@ -795,20 +469,20 @@ static void init(void) {
     .load = lists_window_load,
     .unload = lists_window_unload
   });
-  // Create tasks window and set handlers
-  s_tasks_window = window_create();
-  window_set_window_handlers(s_tasks_window, (WindowHandlers) {
-    .load = tasks_window_load,
-    .unload = tasks_window_unload
-  });
+
+  // Initialize tasks view
+  task_list_view_init();
+
+  // Initialize detail view
+  task_detail_view_init();
 
   window_stack_push(s_lists_window, true);
 }
 
 static void deinit(void) {
   if (s_lists_window) window_destroy(s_lists_window);
-  if (s_tasks_window) window_destroy(s_tasks_window);
-  if (s_detail_window) window_destroy(s_detail_window);
+  task_list_view_deinit();
+  task_detail_view_deinit();
 }
 
 int main(void) {

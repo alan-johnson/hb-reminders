@@ -9,8 +9,8 @@ void task_detail_view_init(void);
 // Cleanup detail window (called from deinit)
 void task_detail_view_deinit(void);
 
-// Show task detail for currently selected task
-void task_detail_view_show(void);
+// Show task detail for the given task
+void task_detail_view_show(Task *task);
 
 // Get detail window pointer
 Window* task_detail_view_get_window(void);

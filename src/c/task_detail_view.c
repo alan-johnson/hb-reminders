@@ -110,8 +110,7 @@ static void detail_window_unload(Window *window) {
   scroll_layer_destroy(s_scroll_layer);
   action_bar_layer_destroy(s_action_bar);
   gbitmap_destroy(s_checkmark_bitmap);
-  window_destroy(s_detail_window);
-  s_detail_window = NULL;
+  // Note: Window itself is destroyed in task_detail_view_deinit(), not here
 }
 
 // Click handlers
@@ -201,11 +200,14 @@ void task_detail_view_deinit(void) {
   }
 }
 
-void task_detail_view_show(void) {
+void task_detail_view_show(Task *task) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "task_detail_view_show called");
 
-  // Prepare the task details text
-  Task *task = &tasks[selected_task_index];
+  // Validate task pointer
+  if (!task) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "task_detail_view_show: invalid task pointer");
+    return;
+  }
 
   // Convert due date to friendly format (handles "No due date" case)
   convert_iso_to_friendly_date(task->due_date, s_time_buffer, sizeof(s_time_buffer));

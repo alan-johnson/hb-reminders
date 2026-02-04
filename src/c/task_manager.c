@@ -147,10 +147,10 @@ void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t
   // Format the time and date based on user preference
   if (clock_is_24h_style()) {
     // 24-hour format: "Mon Feb 15 14:30"
-    strftime(buffer, sizeof(buffer), "%a %b %d %H:%M", local_time);
+    strftime(buffer, buffer_size, "%a %b %d %H:%M", local_time);
   } else {
     // 12-hour format with AM/PM: "Mon Feb 15 2:30 PM"
-    strftime(buffer, sizeof(buffer), "%a %b %d %I:%M %p", local_time);
+    strftime(buffer, buffer_size, "%a %b %d %I:%M %p", local_time);
   }
 
 }

@@ -39,8 +39,14 @@ static void tasks_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void
     return;
   }
 
+  // Validate the selected index
+  if (cell_index->row >= tasks_count) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "Invalid task index: %d", cell_index->row);
+    return;
+  }
+
   selected_task_index = cell_index->row;
-  task_detail_view_show();
+  task_detail_view_show(&tasks[selected_task_index]);
 }
 
 // Window callbacks

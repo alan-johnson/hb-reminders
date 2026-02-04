@@ -12,6 +12,14 @@ var API_BASE = "http://" + hostname + ":" + port + "/tasks";
 
 console.log('Using API:', API_BASE);
 
+// Function to update API base URL
+function updateAPIBase() {
+  hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+  port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
+  API_BASE = "http://" + hostname + ":" + port + "/tasks";
+  console.log('Updated API:', API_BASE);
+}
+
 // Listen for when the app is ready
 Pebble.addEventListener('ready', function(e) {
   console.warn('=== PEBBLE READY ===');
@@ -183,6 +191,56 @@ function completeTask(taskId, listName) {
     taskId: taskId,
     listName: listName
   });
-  
+
   xhr.send(data);
 }
+
+// Configuration page handlers
+Pebble.addEventListener('showConfiguration', function(e) {
+  console.log('Opening configuration page...');
+
+  // Get current settings
+  var currentHostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+  var currentPort = localStorage.getItem('api_port') || DEFAULT_PORT;
+
+  // Build configuration URL
+  var configUrl = 'https://alan-johnson.github.io/claude-reminders/config.html' +
+    '?hostname=' + encodeURIComponent(currentHostname) +
+    '&port=' + encodeURIComponent(currentPort);
+
+  console.log('Config URL:', configUrl);
+  Pebble.openURL(configUrl);
+});
+
+Pebble.addEventListener('webviewclosed', function(e) {
+  console.log('Configuration page closed');
+
+  if (e && e.response) {
+    console.log('Response:', e.response);
+
+    try {
+      var config = JSON.parse(decodeURIComponent(e.response));
+      console.log('Parsed config:', JSON.stringify(config));
+
+      // Save settings to localStorage
+      if (config.hostname) {
+        localStorage.setItem('api_hostname', config.hostname);
+        console.log('Saved hostname:', config.hostname);
+      }
+
+      if (config.port) {
+        localStorage.setItem('api_port', config.port.toString());
+        console.log('Saved port:', config.port);
+      }
+
+      // Update API base URL
+      updateAPIBase();
+      console.log('Configuration saved successfully');
+
+    } catch (err) {
+      console.log('Error parsing configuration:', err);
+    }
+  } else {
+    console.log('Configuration cancelled or no response');
+  }
+});

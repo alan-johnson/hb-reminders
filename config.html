@@ -144,7 +144,7 @@
 
       <div class="form-group">
         <label for="hostname">Server Hostname or IP Address</label>
-        <input type="text" id="hostname" placeholder="10.0.0.64">
+        <input type="text" id="hostname" placeholder="127.0.0.1">
         <div class="help-text">Enter the IP address or hostname of your Python server</div>
         <div class="example">
           <strong>Examples:</strong><br>
@@ -175,7 +175,7 @@
     }
 
     // Load existing settings
-    var hostname = getQueryParam('hostname') || '10.0.0.64';
+    var hostname = getQueryParam('hostname') || '127.0.0.1';
     var port = getQueryParam('port') || '5050';
 
     // Populate form

@@ -398,6 +398,7 @@ void fetch_tasks(const char *list_name) {
     return;
   }
   dict_write_uint8(iter, KEY_TYPE, 2); // Request tasks
+  dict_write_cstring(iter, KEY_ID, list_id);
   dict_write_cstring(iter, KEY_LIST_NAME, list_name);
   app_message_outbox_send();
 }
@@ -410,7 +411,7 @@ void complete_task(uint8_t task_id, const char *list_name) {
     return;
   }
   dict_write_uint8(iter, KEY_TYPE, 3); // Complete task
-  dict_write_uint8(iter, KEY_ID, task_id);
+  dict_write_cstring(iter, KEY_ID, task_id);
   dict_write_cstring(iter, KEY_LIST_NAME, list_name);
   app_message_outbox_send();
 }

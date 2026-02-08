@@ -3,12 +3,13 @@ console.log('*** JavaScript file loaded! ***');
 
 // Configuration - can be overridden via localStorage
 var DEFAULT_HOSTNAME = "10.0.0.64";
-var DEFAULT_PORT = 5050;
+var DEFAULT_PORT = 3000;
+var DEFAULT_PROVIDER = "provider=apple"
 
 // Try to load from localStorage, fallback to defaults
 var hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
 var port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
-var API_BASE = "http://" + hostname + ":" + port + "/tasks";
+var API_BASE = "http://" + hostname + ":" + port + "/api";
 
 console.log('Using API:', API_BASE);
 
@@ -16,7 +17,7 @@ console.log('Using API:', API_BASE);
 function updateAPIBase() {
   hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
   port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
-  API_BASE = "http://" + hostname + ":" + port + "/tasks";
+  API_BASE = "http://" + hostname + ":" + port + "/api";
   console.log('Updated API:', API_BASE);
 }
 
@@ -56,9 +57,9 @@ Pebble.addEventListener('appmessage', function(e) {
       fetchTaskLists();
     } else if (payload.KEY_TYPE === 2) {
       // Fetch tasks for a specific list
-      var listName = payload.KEY_LIST_NAME;
-      console.log('KEY_TYPE 2: Fetching tasks for list:', listName);
-      fetchTasks(listName);
+      var listId = payload.KEY_ID;
+      console.log('KEY_TYPE 2: Fetching tasks for list id:', listId);
+      fetchTasks(listId);
     } else if (payload.KEY_TYPE === 3) {
       // Complete a task
       var taskId = payload.KEY_ID;
@@ -75,14 +76,14 @@ function fetchTaskLists() {
   console.log('Fetching task lists from API...');
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists', true);
+  xhr.open('GET', API_BASE + '/lists?' + DEFAULT_PROVIDER, true);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
       if (xhr.status === 200) {
         try {
           var response = JSON.parse(xhr.responseText);
           console.log('Received lists:', JSON.stringify(response));
-          sendTaskListsToWatch(response);
+          sendTaskListsToWatch(response.lists);
         } catch (e) {
           console.log('Error parsing response:', e);
         }
@@ -100,6 +101,7 @@ function sendTaskListsToWatch(lists) {
   for (var i = 0; i < lists.length; i++) {
     var dict = {
       'KEY_TYPE': 1,
+      'KEY_ID': lists[i].id || i, // Use index as fallback ID
       'KEY_NAME': lists[i].name || lists[i]
     };
     
@@ -115,11 +117,11 @@ function sendTaskListsToWatch(lists) {
 }
 
 // Fetch tasks for a specific list
-function fetchTasks(listName) {
-  console.log('Fetching tasks for list from API: ' + listName);
+function fetchTasks(listId) {
+  console.log('Fetching tasks for list from API: ' + listId);
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists/' + encodeURIComponent(listName), true);
+  xhr.open('GET', API_BASE + '/lists/' + encodeURIComponent(listId) +'/tasks' + DEFAULT_PROVIDER, true);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
       if (xhr.status === 200) {
@@ -145,12 +147,13 @@ function sendTasksToWatch(tasks) {
     var task = tasks[i];
     var dict = {
       'KEY_TYPE': 2,
-      'KEY_ID': task.externalId || '',
-      'KEY_IDX': task.id || 0,
-      'KEY_NAME': task.title || '',
-      'KEY_PRIORITY': task.priority || 0,
+      'KEY_ID': task.id || '',
+      //'KEY_IDX': task.id || 0,
+      'KEY_NAME': task.name || '',
+      //'KEY_PRIORITY': task.priority || 0,
       'KEY_DUE_DATE': task.dueDate || 'No due date',
-      'KEY_COMPLETED': task.isCompleted ? 1 : 0
+      'KEY_COMPLETED': task.completed ? 1 : 0,
+      'KEY_NOTES': task.notes || ''
     };
     
     Pebble.sendAppMessage(dict,

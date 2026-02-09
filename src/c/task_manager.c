@@ -90,14 +90,38 @@ static void lists_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void
 }
 
 time_t convert_iso_to_time_t(const char* iso_date_str) {
-    if (!iso_date_str || strlen(iso_date_str) < 19) {
+    if (!iso_date_str || strlen(iso_date_str) == 0) {
+        return (time_t)-1;
+    }
+
+    // Check if this is a Unix timestamp (all digits)
+    bool is_timestamp = true;
+    for (int i = 0; iso_date_str[i] != '\0'; i++) {
+        if (iso_date_str[i] < '0' || iso_date_str[i] > '9') {
+            is_timestamp = false;
+            break;
+        }
+    }
+
+    if (is_timestamp) {
+        // Parse Unix timestamp (seconds since epoch)
+        time_t timestamp = 0;
+        for (int i = 0; iso_date_str[i] != '\0'; i++) {
+            timestamp = timestamp * 10 + (iso_date_str[i] - '0');
+        }
+        APP_LOG(APP_LOG_LEVEL_INFO, "Parsed as Unix timestamp: %ld", (long)timestamp);
+        return timestamp;
+    }
+
+    // Otherwise parse as ISO format
+    if (strlen(iso_date_str) < 19) {
         return (time_t)-1;
     }
 
     struct tm t = {0}; // Initialize to zero
 
     // Manual parsing to avoid sscanf issues on Pebble
-    // Expected format: "2026-02-15T14:30:00Z"
+    // Expected format: "2026-02-15T14:30:00" (local timezone, no Z suffix)
     // Parse year (positions 0-3)
     t.tm_year = (iso_date_str[0] - '0') * 1000 +
                 (iso_date_str[1] - '0') * 100 +
@@ -128,7 +152,7 @@ time_t convert_iso_to_time_t(const char* iso_date_str) {
     // Set daylight saving time flag
     t.tm_isdst = -1; // Let mktime determine DST
 
-    // Convert to time_t
+    // Convert to time_t (input is already in local timezone)
     time_t timestamp = mktime(&t);
 
     return timestamp;
@@ -141,6 +165,8 @@ void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t
     return;
   }
 
+  APP_LOG(APP_LOG_LEVEL_INFO, "convert_iso_to_friendly_date - Input: %s", iso_date_str);
+
   // Parse ISO format date
   time_t timestamp = convert_iso_to_time_t(iso_date_str);
   if (timestamp == (time_t)-1) {
@@ -149,7 +175,12 @@ void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t
     return;
   }
 
+  APP_LOG(APP_LOG_LEVEL_INFO, "convert_iso_to_friendly_date - timestamp: %ld", (long)timestamp);
+
   struct tm *local_time = localtime(&timestamp);
+
+  APP_LOG(APP_LOG_LEVEL_INFO, "convert_iso_to_friendly_date - localtime hour: %d, min: %d",
+          local_time->tm_hour, local_time->tm_min);
 
   // Format the time and date based on user preference
   if (clock_is_24h_style()) {
@@ -159,6 +190,8 @@ void convert_iso_to_friendly_date(const char* iso_date_str, char* buffer, size_t
     // 12-hour format with AM/PM: "Mon Feb 15 2:30 PM"
     strftime(buffer, buffer_size, "%a %b %d %I:%M %p", local_time);
   }
+
+  APP_LOG(APP_LOG_LEVEL_INFO, "convert_iso_to_friendly_date - Output: %s", buffer);
 
 }
 

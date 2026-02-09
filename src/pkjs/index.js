@@ -155,6 +155,143 @@ function fetchTasks(listId) {
   xhr.send();
 }
 
+// Helper function to pad numbers with leading zeros
+function pad(num) {
+  return (num < 10 ? '0' : '') + num;
+}
+
+// Helper function to format Date as ISO string in LOCAL timezone
+// Output format: "2026-02-15T14:30:00" (no Z suffix, represents local time)
+function formatDateAsLocalISO(date) {
+  var year = date.getFullYear();
+  var month = pad(date.getMonth() + 1);
+  var day = pad(date.getDate());
+  var hours = pad(date.getHours());
+  var minutes = pad(date.getMinutes());
+  var seconds = pad(date.getSeconds());
+
+  console.log('formatDateAsLocalISO - Date object:', date.toString());
+  console.log('formatDateAsLocalISO - Year:', year, 'Month:', month, 'Day:', day);
+  console.log('formatDateAsLocalISO - Hours:', hours, 'Minutes:', minutes, 'Seconds:', seconds);
+
+  return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes + ':' + seconds;
+}
+
+// Helper function to check if a date string is in ISO format
+function isISOFormat(dateStr) {
+  if (!dateStr || dateStr === 'No due date') {
+    return false;
+  }
+  // ISO 8601 format: YYYY-MM-DDTHH:mm:ss.sssZ or YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss (local)
+  var isoRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?Z?)?$/;
+  return isoRegex.test(dateStr);
+}
+
+// Helper function to parse AppleScript date format
+// Format: "Saturday, January 17, 2026 at 12:00:00 AM"
+function parseAppleScriptDate(dateStr) {
+  // Month names mapping
+  var months = {
+    'January': 0, 'February': 1, 'March': 2, 'April': 3,
+    'May': 4, 'June': 5, 'July': 6, 'August': 7,
+    'September': 8, 'October': 9, 'November': 10, 'December': 11
+  };
+
+  // Match pattern: "DayOfWeek, Month Day, Year at Hour:Minute:Second AM/PM"
+  var pattern = /\w+,\s+(\w+)\s+(\d+),\s+(\d+)\s+at\s+(\d+):(\d+):(\d+)\s+(AM|PM)/;
+  var match = dateStr.match(pattern);
+
+  if (!match) {
+    return null;
+  }
+
+  var monthName = match[1];
+  var day = parseInt(match[2]);
+  var year = parseInt(match[3]);
+  var hour = parseInt(match[4]);
+  var minute = parseInt(match[5]);
+  var second = parseInt(match[6]);
+  var ampm = match[7];
+
+  // Convert to 24-hour format
+  if (ampm === 'PM' && hour !== 12) {
+    hour += 12;
+  } else if (ampm === 'AM' && hour === 12) {
+    hour = 0;
+  }
+
+  // Get month number
+  var month = months[monthName];
+  if (month === undefined) {
+    return null;
+  }
+
+  console.log('parseAppleScriptDate - Parsed values:');
+  console.log('  Year:', year, 'Month:', monthName, '(' + month + ')', 'Day:', day);
+  console.log('  Hour:', hour, 'Minute:', minute, 'Second:', second, 'AM/PM:', ampm);
+
+  // Create Date object (assuming local time from the device)
+  var date = new Date(year, month, day, hour, minute, second);
+
+  console.log('parseAppleScriptDate - Created Date object:', date.toString());
+  console.log('parseAppleScriptDate - Date.getHours():', date.getHours());
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+// Helper function to convert any date format to ISO
+function convertDateToISO(dateStr) {
+  if (!dateStr || dateStr.trim() === '') {
+    console.log('No date provided');
+    return null;
+  }
+
+  // If already ISO format, return as is
+  if (isISOFormat(dateStr)) {
+    console.log('Date already in ISO format:', dateStr);
+    return dateStr;
+  }
+
+  try {
+    var date = null;
+
+    // Try to parse as AppleScript format first
+    if (dateStr.indexOf(' at ') !== -1) {
+      date = parseAppleScriptDate(dateStr);
+      if (date) {
+        // Send Unix timestamp (seconds since epoch) as a string
+        var timestamp = Math.floor(date.getTime() / 1000).toString();
+        console.log('Converted AppleScript date from "' + dateStr + '" to timestamp: ' + timestamp);
+        console.log('  (that represents: ' + date.toString() + ')');
+        return timestamp;
+      }
+    }
+
+    // Fallback to standard Date parser
+    date = new Date(dateStr);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.log('Invalid date format, cannot convert:', dateStr);
+      return null;
+    }
+
+    // Send Unix timestamp (seconds since epoch) as a string
+    var timestamp = Math.floor(date.getTime() / 1000).toString();
+    console.log('Converted date from "' + dateStr + '" to timestamp: ' + timestamp);
+    console.log('  (that represents: ' + date.toString() + ')');
+    return timestamp;
+  } catch (e) {
+    console.log('Error converting date to ISO:', dateStr, e);
+    return null;
+  }
+}
+
 // Send tasks to the watch sequentially with delays to avoid APP_MSG_BUSY
 function sendTasksToWatch(tasks) {
   // If no tasks, send a message to clear loading state
@@ -190,11 +327,25 @@ function sendTasksToWatch(tasks) {
     }
 
     var task = tasks[currentIndex];
+
+    // Convert date to ISO format if present, otherwise use "No due date"
+    var dueDate = 'No due date';
+    if (task.dueDate) {
+      var convertedDate = convertDateToISO(task.dueDate);
+      if (convertedDate) {
+        dueDate = convertedDate;
+      } else {
+        console.log('Failed to convert date for task:', task.name, 'Original date:', task.dueDate);
+        // If conversion fails, don't send a date
+        dueDate = 'No due date';
+      }
+    }
+
     var dict = {
       'KEY_TYPE': 2,
       'KEY_ID': task.id || '',
       'KEY_NAME': task.name || '',
-      'KEY_DUE_DATE': task.dueDate || 'No due date',
+      'KEY_DUE_DATE': dueDate,
       'KEY_COMPLETED': task.completed ? 1 : 0,
       'KEY_NOTES': task.notes || ''
     };

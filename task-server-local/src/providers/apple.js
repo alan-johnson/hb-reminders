@@ -192,32 +192,6 @@ class AppleRemindersProvider {
     return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
   }
 
-  // Convert AppleScript date format to ISO 8601
-  // Input: "Tuesday, February 10, 2026 at 9:00:00 AM"
-  // Output: "2026-02-10T09:00:00.000Z"
-  convertAppleScriptDateToISO(dateStr) {
-    if (!dateStr || dateStr.trim() === '') {
-      return null;
-    }
-
-    try {
-      // AppleScript dates can be parsed directly by JavaScript Date
-      const date = new Date(dateStr);
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.error('Invalid date format:', dateStr);
-        return null;
-      }
-
-      // Convert to ISO 8601 format
-      return date.toISOString();
-    } catch (error) {
-      console.error('Error converting date:', dateStr, error);
-      return null;
-    }
-  }
-
   // Parse lists output
   parseListsOutput(output) {
     if (!output || output.trim() === '') {
@@ -276,10 +250,7 @@ class AppleRemindersProvider {
         } else if (trimmed.startsWith('NOTES:')) {
           task.notes = trimmed.substring(6).trim();
         } else if (trimmed.startsWith('DUE:')) {
-          const appleDate = trimmed.substring(4).trim();
-          // Convert AppleScript date to ISO format
-          const isoDate = this.convertAppleScriptDateToISO(appleDate);
-          task.dueDate = isoDate || appleDate; // Fallback to original if conversion fails
+          task.dueDate = trimmed.substring(4).trim();
         }
       }
 
@@ -311,15 +282,9 @@ class AppleRemindersProvider {
       } else if (trimmed.startsWith('NOTES:')) {
         task.notes = trimmed.substring(6).trim();
       } else if (trimmed.startsWith('DUE:')) {
-        const appleDate = trimmed.substring(4).trim();
-        // Convert AppleScript date to ISO format
-        const isoDate = this.convertAppleScriptDateToISO(appleDate);
-        task.dueDate = isoDate || appleDate; // Fallback to original if conversion fails
+        task.dueDate = trimmed.substring(4).trim();
       } else if (trimmed.startsWith('CREATED:')) {
-        const appleDate = trimmed.substring(8).trim();
-        // Convert AppleScript date to ISO format
-        const isoDate = this.convertAppleScriptDateToISO(appleDate);
-        task.createdDate = isoDate || appleDate; // Fallback to original if conversion fails
+        task.createdDate = trimmed.substring(8).trim();
       }
     }
 

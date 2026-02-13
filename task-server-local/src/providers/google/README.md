@@ -492,7 +492,7 @@ Use the Google APIs Explorer to test API calls:
 
 ## License
 
-This provider is part of the claude-reminders project.
+This provider is part of the hb-reminders project.
 
 ## Support
 

@@ -337,7 +337,7 @@ DEFAULT_PROVIDER=apple
 
 ## License
 
-This provider is part of the claude-reminders project.
+This provider is part of the hb-reminders project.
 
 ## Support
 

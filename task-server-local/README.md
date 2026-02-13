@@ -25,9 +25,9 @@ A REST API server that integrates with Apple Reminders, Microsoft Tasks, and Goo
 ## Installation
 
 1. **Clone or download the project**
-   ```bash
-   cd claude-task-server
-   ```
+  ```bash
+  cd hb-task-server
+  ```
 
 2. **Install dependencies**
    ```bash

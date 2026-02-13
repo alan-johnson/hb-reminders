@@ -4,7 +4,7 @@ console.log('*** JavaScript file loaded! ***');
 // Configuration - can be overridden via localStorage
 var DEFAULT_HOSTNAME = "localhost";
 var DEFAULT_PORT = 3000;
-var DEFAULT_PROVIDER = "provider=apple"
+var DEFAULT_PROVIDER = "provider=reminders-cli"
 
 // Try to load from localStorage, fallback to defaults
 var hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
@@ -409,7 +409,7 @@ Pebble.addEventListener('showConfiguration', function(e) {
   var currentPort = localStorage.getItem('api_port') || DEFAULT_PORT;
 
   // Build configuration URL
-  var configUrl = 'https://alan-johnson.github.io/claude-reminders/config.html' +
+  var configUrl = 'https://alan-johnson.github.io/hb-reminders/config.html' +
     '?hostname=' + encodeURIComponent(currentHostname) +
     '&port=' + encodeURIComponent(currentPort);
 

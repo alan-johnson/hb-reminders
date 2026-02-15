@@ -415,9 +415,10 @@ Pebble.addEventListener('showConfiguration', function(e) {
   var currentPort = localStorage.getItem('api_port') || DEFAULT_PORT;
   var currentProvider = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
 
-  // Build configuration URL
+  // Build configuration URL (v= cache buster)
   var configUrl = 'https://alan-johnson.github.io/hb-reminders/config.html' +
-    '?hostname=' + encodeURIComponent(currentHostname) +
+    '?v=' + Date.now() +
+    '&hostname=' + encodeURIComponent(currentHostname) +
     '&port=' + encodeURIComponent(currentPort) +
     '&provider=' + encodeURIComponent(currentProvider);
 

@@ -1,0 +1,40 @@
+{
+    [
+        {
+            "id": "93C41131-E8B1-4762-9E8F-FB4918C78AB3",
+            "name": "Condo window dimensions",
+            "completed": false,
+            "notes": "",
+            "dueDate": null,
+            "priority": 5,
+            "index": 0
+        },
+        {
+            "id": "673694E5-04EB-49E4-891D-A7D436B528A3",
+            "name": "Create stick cartoon of Don Quixote on horse, tilting at windmill \"monster\" then closing door on it.",
+            "completed": false,
+            "notes": "",
+            "dueDate": null,
+            "priority": 5,
+            "index": 1
+        },
+        {
+            "id": "E3041E83-2154-4EA6-B738-F18D7601C6CC",
+            "name": "Add soft skills to resume and linked-in profile",
+            "completed": false,
+            "notes": "Team - Do you jump in to help colleagues with tasks that overwhelm them? Find tools to improve the team’s workflow? Leave extra time every day to think about your team’s, or your company’s, big-picture goals?\nSelf-motivation - This lets prospective employers know they can trust you to get tasks done, even in an environment when they can’t necessarily see what you’re doing and the team isn’t physically together.\nCommunication - “Communication skills and your ability to foster and develop relationships are particularly important right now,” says Salemi. People who work from home “rely on technology as an avenue to continue developing and honing work relationships” and as a way to keep their bosses up-to-date on what they’re accomplishing. \nTime management - If you’re organized, detail-oriented, and can meet a deadline, highlight your ability to manage time well in your resume.\n\nRather than simply listing your skills, use achievements and details of your work to illustrate them.\n\nAdd Telecommunication skills: Zoom, Slack, WebEx.\n\nShowcase abilities to adapt to rapid changes. ** add to Experience sections.\n\nInclude URL to LinkedIn profile. ** add to top beneath contact information.",
+            "dueDate": null,
+            "priority": 5,
+            "index": 2
+        },
+        {
+            "id": "32D03244-5C9B-4A43-A409-49BDA26C7D65",
+            "name": "Work on personal profile document",
+            "completed": false,
+            "notes": "",
+            "dueDate": null,
+            "priority": 5,
+            "index": 3
+        }
+    ]
+}

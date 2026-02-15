@@ -97,8 +97,7 @@ function fetchTaskLists() {
 // Send task lists to the watch sequentially with delays to avoid APP_MSG_BUSY
 function sendTaskListsToWatch(lists) {
   var currentIndex = 0;
-  var retryCount = 0;
-  var MAX_RETRIES = 3;
+  var retryDelay = 500;
 
   function sendNextList() {
     if (currentIndex >= lists.length) {
@@ -115,22 +114,14 @@ function sendTaskListsToWatch(lists) {
     Pebble.sendAppMessage(dict,
       function(e) {
         console.log('Task list ' + (currentIndex + 1) + '/' + lists.length + ' sent successfully');
-        retryCount = 0;
+        retryDelay = 500;
         currentIndex++;
-        // Wait 100ms before sending next message to avoid APP_MSG_BUSY
-        setTimeout(sendNextList, 100);
+        setTimeout(sendNextList, 200);
       },
       function(e) {
-        retryCount++;
-        if (retryCount <= MAX_RETRIES) {
-          console.log('Error sending task list ' + (currentIndex + 1) + ', retry ' + retryCount + '/' + MAX_RETRIES);
-          setTimeout(sendNextList, 200);
-        } else {
-          console.log('Failed to send task list ' + (currentIndex + 1) + ' after ' + MAX_RETRIES + ' retries, skipping');
-          retryCount = 0;
-          currentIndex++;
-          setTimeout(sendNextList, 200);
-        }
+        console.log('Error sending task list ' + (currentIndex + 1) + ', retrying in ' + retryDelay + 'ms');
+        setTimeout(sendNextList, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 4000);
       }
     );
   }
@@ -140,11 +131,11 @@ function sendTaskListsToWatch(lists) {
   Pebble.sendAppMessage(countDict,
     function(e) {
       console.log('Task lists count (' + lists.length + ') sent, now sending items...');
-      setTimeout(sendNextList, 100);
+      setTimeout(sendNextList, 200);
     },
     function(e) {
       console.log('Error sending task lists count, retrying...');
-      setTimeout(function() { sendTaskListsToWatch(lists); }, 200);
+      setTimeout(function() { sendTaskListsToWatch(lists); }, 500);
     }
   );
 }
@@ -318,8 +309,7 @@ function sendTasksToWatch(tasks) {
 
   // Send tasks one at a time with delay to avoid APP_MSG_BUSY
   var currentIndex = 0;
-  var retryCount = 0;
-  var MAX_RETRIES = 3;
+  var retryDelay = 500;
 
   function sendNextTask() {
     if (currentIndex >= taskCount) {
@@ -340,7 +330,9 @@ function sendTasksToWatch(tasks) {
         dueDate = 'No due date';
       }
     }
-
+    var maxLength = 255; // Max length for notes
+    task.notes = task.notes.slice(0, maxLength);
+    
     var dict = {
       'KEY_TYPE': 2,
       'KEY_ID': task.id || '',
@@ -350,25 +342,28 @@ function sendTasksToWatch(tasks) {
       'KEY_NOTES': task.notes || ''
     };
 
+/*
+     var dict = {
+      'KEY_TYPE': 2,
+      'KEY_ID': task.id || '',
+      'KEY_NAME': task.name || '',
+      'KEY_DUE_DATE': dueDate,
+      'KEY_COMPLETED': task.completed ? 1 : 0,
+      'KEY_NOTES': ''
+    };
+*/
+
     Pebble.sendAppMessage(dict,
       function(e) {
         console.log('Task ' + (currentIndex + 1) + '/' + taskCount + ' sent successfully');
-        retryCount = 0;
+        retryDelay = 500;
         currentIndex++;
-        // Wait 100ms before sending next message to avoid APP_MSG_BUSY
-        setTimeout(sendNextTask, 100);
+        setTimeout(sendNextTask, 200);
       },
       function(e) {
-        retryCount++;
-        if (retryCount <= MAX_RETRIES) {
-          console.log('Error sending task ' + (currentIndex + 1) + ', retry ' + retryCount + '/' + MAX_RETRIES);
-          setTimeout(sendNextTask, 200);
-        } else {
-          console.log('Failed to send task ' + (currentIndex + 1) + ' after ' + MAX_RETRIES + ' retries, skipping');
-          retryCount = 0;
-          currentIndex++;
-          setTimeout(sendNextTask, 200);
-        }
+        console.log('Error sending task ' + (currentIndex + 1) + ', retrying in ' + retryDelay + 'ms');
+        setTimeout(sendNextTask, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 4000);
       }
     );
   }
@@ -379,12 +374,12 @@ function sendTasksToWatch(tasks) {
     function(e) {
       console.log('Tasks count (' + taskCount + ') sent, now sending items...');
       if (taskCount > 0) {
-        setTimeout(sendNextTask, 100);
+        setTimeout(sendNextTask, 200);
       }
     },
     function(e) {
       console.log('Error sending tasks count, retrying...');
-      setTimeout(function() { sendTasksToWatch(tasks); }, 200);
+      setTimeout(function() { sendTasksToWatch(tasks); }, 500);
     }
   );
 }

@@ -4,11 +4,12 @@ console.log('*** JavaScript file loaded! ***');
 // Configuration - can be overridden via localStorage
 var DEFAULT_HOSTNAME = "localhost";
 var DEFAULT_PORT = 3000;
-var DEFAULT_PROVIDER = "provider=reminders-cli"
+var DEFAULT_PROVIDER = "reminders-cli";
 
 // Try to load from localStorage, fallback to defaults
 var hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
 var port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
+var provider = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
 var API_BASE = "http://" + hostname + ":" + port + "/api";
 
 console.log('Using API:', API_BASE);
@@ -17,8 +18,9 @@ console.log('Using API:', API_BASE);
 function updateAPIBase() {
   hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
   port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
+  provider = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
   API_BASE = "http://" + hostname + ":" + port + "/api";
-  console.log('Updated API:', API_BASE);
+  console.log('Updated API:', API_BASE, 'Provider:', provider);
 }
 
 // Listen for when the app is ready
@@ -75,7 +77,7 @@ function fetchTaskLists() {
   console.log('Fetching task lists from API...');
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists?' + DEFAULT_PROVIDER, true);
+  xhr.open('GET', API_BASE + '/lists?' + 'provider=' + provider, true);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
       if (xhr.status === 200) {
@@ -145,7 +147,7 @@ function fetchTasks(listId) {
   console.log('Fetching tasks for list from API: ' + listId);
 
   var xhr = new XMLHttpRequest();
-  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks?' + DEFAULT_PROVIDER;
+  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks?' + 'provider=' + provider;
   console.log('Request URL:', url);
   xhr.open('GET', url, true);
   xhr.onload = function() {
@@ -411,11 +413,13 @@ Pebble.addEventListener('showConfiguration', function(e) {
   // Get current settings
   var currentHostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
   var currentPort = localStorage.getItem('api_port') || DEFAULT_PORT;
+  var currentProvider = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
 
   // Build configuration URL
   var configUrl = 'https://alan-johnson.github.io/hb-reminders/config.html' +
     '?hostname=' + encodeURIComponent(currentHostname) +
-    '&port=' + encodeURIComponent(currentPort);
+    '&port=' + encodeURIComponent(currentPort) +
+    '&provider=' + encodeURIComponent(currentProvider);
 
   console.log('Config URL:', configUrl);
   Pebble.openURL(configUrl);
@@ -440,6 +444,11 @@ Pebble.addEventListener('webviewclosed', function(e) {
       if (config.port) {
         localStorage.setItem('api_port', config.port.toString());
         console.log('Saved port:', config.port);
+      }
+
+      if (config.provider) {
+        localStorage.setItem('api_provider', config.provider);
+        console.log('Saved provider:', config.provider);
       }
 
       // Update API base URL

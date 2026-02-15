@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Claude Reminders Configuration</title>
+  <title>HB Reminders Configuration</title>
   <style>
     * {
       box-sizing: border-box;
@@ -68,17 +68,20 @@
     }
 
     input[type="text"],
-    input[type="number"] {
+    input[type="number"],
+    select {
       width: 100%;
       padding: 12px;
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 16px;
       transition: border-color 0.3s;
+      background-color: white;
     }
 
     input[type="text"]:focus,
-    input[type="number"]:focus {
+    input[type="number"]:focus,
+    select:focus {
       outline: none;
       border-color: #4CAF50;
     }
@@ -136,16 +139,16 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Claude Reminders</h1>
+      <h1>HB Reminders</h1>
     </div>
 
     <div class="section">
-      <h2 class="section-title">Server Configuration</h2>
+      <h2 class="section-title">HB Reminders Configuration</h2>
 
       <div class="form-group">
         <label for="hostname">Server Hostname or IP Address</label>
         <input type="text" id="hostname" placeholder="127.0.0.1">
-        <div class="help-text">Enter the IP address or hostname of your Python server</div>
+        <div class="help-text">Enter the IP address or hostname of your Handsbreadth Task Server</div>
         <div class="example">
           <strong>Examples:</strong><br>
           • 192.168.1.100<br>
@@ -156,8 +159,23 @@
 
       <div class="form-group">
         <label for="port">Server Port</label>
-        <input type="number" id="port" placeholder="5050" min="1" max="65535">
-        <div class="help-text">Enter the port number (typically 5050)</div>
+        <input type="number" id="port" placeholder="3000" min="1" max="65535">
+        <div class="help-text">Enter the port number (typically 3000)</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Task Provider</h2>
+
+      <div class="form-group">
+        <label for="provider">Provider</label>
+        <select id="provider">
+          <option value="apple">Apple Reminders</option>
+          <option value="reminders-cli">Reminders CLI</option>
+          <option value="google">Google Tasks</option>
+          <option value="microsoft">Microsoft Tasks</option>
+        </select>
+        <div class="help-text">Select the task provider your server is configured to use</div>
       </div>
     </div>
 
@@ -176,16 +194,19 @@
 
     // Load existing settings
     var hostname = getQueryParam('hostname') || '127.0.0.1';
-    var port = getQueryParam('port') || '5050';
+    var port = getQueryParam('port') || '3000';
+    var provider = getQueryParam('provider') || 'reminders-cli';
 
     // Populate form
     document.getElementById('hostname').value = hostname;
     document.getElementById('port').value = port;
+    document.getElementById('provider').value = provider;
 
     // Save button handler
     document.getElementById('save-button').addEventListener('click', function() {
       var newHostname = document.getElementById('hostname').value.trim();
       var newPort = document.getElementById('port').value.trim();
+      var newProvider = document.getElementById('provider').value;
 
       // Validate inputs
       if (!newHostname) {
@@ -201,7 +222,8 @@
       // Build result URL
       var result = {
         hostname: newHostname,
-        port: parseInt(newPort)
+        port: parseInt(newPort),
+        provider: newProvider
       };
 
       // Send result back to Pebble

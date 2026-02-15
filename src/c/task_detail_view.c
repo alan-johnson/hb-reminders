@@ -5,6 +5,7 @@
 
 // Static variables
 static Window *s_detail_window;
+static StatusBarLayer *s_detail_status_bar;
 static ScrollLayer *s_scroll_layer;
 static TextLayer *s_detail_text_layer;
 static ActionBarLayer *s_action_bar;
@@ -24,6 +25,10 @@ static void detail_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
+  // Add status bar
+  s_detail_status_bar = status_bar_layer_create();
+  layer_add_child(window_layer, status_bar_layer_get_layer(s_detail_status_bar));
+
   // Create action bar first so we can get proper unobstructed bounds
   s_action_bar = action_bar_layer_create();
   action_bar_layer_add_to_window(s_action_bar, window);
@@ -32,16 +37,15 @@ static void detail_window_load(Window *window) {
   s_checkmark_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_CHECKMARK);
   action_bar_layer_set_icon(s_action_bar, BUTTON_ID_SELECT, s_checkmark_bitmap);
 
-  // Get bounds accounting for action bar
+  // Get bounds accounting for action bar and status bar
+  int16_t content_y = STATUS_BAR_LAYER_HEIGHT;
+  int16_t content_h = bounds.size.h - STATUS_BAR_LAYER_HEIGHT;
   GRect scroll_bounds;
   #if defined(PBL_ROUND)
-  // For round displays, start at origin and account for action bar
-  // Don't use unobstructed origin to avoid positioning issues
-  int16_t scroll_width = bounds.size.w - ACTION_BAR_WIDTH - 10; // Extra margin for action bar
-  scroll_bounds = GRect(0, 0, scroll_width, bounds.size.h);
+  int16_t scroll_width = bounds.size.w - ACTION_BAR_WIDTH - 10;
+  scroll_bounds = GRect(0, content_y, scroll_width, content_h);
   #else
-  // For rectangular displays, account for action bar width
-  scroll_bounds = GRect(0, 0, bounds.size.w - ACTION_BAR_WIDTH, bounds.size.h);
+  scroll_bounds = GRect(0, content_y, bounds.size.w - ACTION_BAR_WIDTH, content_h);
   #endif
 
   // Create scroll layer
@@ -106,6 +110,10 @@ static void detail_window_load(Window *window) {
 static void detail_window_unload(Window *window) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "detail_window_unload called");
 
+  if (s_detail_status_bar) {
+    status_bar_layer_destroy(s_detail_status_bar);
+    s_detail_status_bar = NULL;
+  }
   text_layer_destroy(s_detail_text_layer);
   scroll_layer_destroy(s_scroll_layer);
   action_bar_layer_destroy(s_action_bar);

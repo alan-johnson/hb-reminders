@@ -6,6 +6,7 @@
 // Static variables
 static Window *s_tasks_window;
 static MenuLayer *s_tasks_menu;
+static StatusBarLayer *s_tasks_status_bar;
 
 // Menu callbacks
 static uint16_t tasks_menu_get_num_rows(MenuLayer *menu_layer, uint16_t section_index, void *data) {
@@ -58,6 +59,10 @@ static void tasks_menu_select(MenuLayer *menu_layer, MenuIndex *cell_index, void
 static void tasks_window_unload(Window *window) {
   // When tasks window is closed we should return to lists state
   current_state = STATE_TASK_LISTS;
+  if (s_tasks_status_bar) {
+    status_bar_layer_destroy(s_tasks_status_bar);
+    s_tasks_status_bar = NULL;
+  }
   if (s_tasks_menu) {
     menu_layer_destroy(s_tasks_menu);
     s_tasks_menu = NULL;
@@ -68,7 +73,16 @@ static void tasks_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_tasks_menu = menu_layer_create(bounds);
+  // Add status bar
+  s_tasks_status_bar = status_bar_layer_create();
+  layer_add_child(window_layer, status_bar_layer_get_layer(s_tasks_status_bar));
+
+  // Create menu below status bar
+  GRect menu_bounds = GRect(bounds.origin.x,
+                            bounds.origin.y + STATUS_BAR_LAYER_HEIGHT,
+                            bounds.size.w,
+                            bounds.size.h - STATUS_BAR_LAYER_HEIGHT);
+  s_tasks_menu = menu_layer_create(menu_bounds);
   menu_layer_set_callbacks(s_tasks_menu, NULL, (MenuLayerCallbacks){
     .get_num_rows = tasks_menu_get_num_rows,
     .draw_row = tasks_menu_draw_row,

@@ -10,6 +10,7 @@
 // Windows
 static Window *s_lists_window;
 static MenuLayer *s_lists_menu;
+static StatusBarLayer *s_lists_status_bar;
 
 // Global state (definitions for variables declared extern in task_manager.h)
 AppState current_state = STATE_TASK_LISTS;
@@ -521,7 +522,16 @@ static void lists_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_lists_menu = menu_layer_create(bounds);
+  // Add status bar
+  s_lists_status_bar = status_bar_layer_create();
+  layer_add_child(window_layer, status_bar_layer_get_layer(s_lists_status_bar));
+
+  // Create menu below status bar
+  GRect menu_bounds = GRect(bounds.origin.x,
+                            bounds.origin.y + STATUS_BAR_LAYER_HEIGHT,
+                            bounds.size.w,
+                            bounds.size.h - STATUS_BAR_LAYER_HEIGHT);
+  s_lists_menu = menu_layer_create(menu_bounds);
   menu_layer_set_callbacks(s_lists_menu, NULL, (MenuLayerCallbacks){
     .get_num_rows = lists_menu_get_num_rows,
     .draw_row = lists_menu_draw_row,
@@ -547,6 +557,10 @@ static void lists_window_load(Window *window) {
 }
 
 static void lists_window_unload(Window *window) {
+  if (s_lists_status_bar) {
+    status_bar_layer_destroy(s_lists_status_bar);
+    s_lists_status_bar = NULL;
+  }
   if (s_lists_menu) {
     menu_layer_destroy(s_lists_menu);
     s_lists_menu = NULL;

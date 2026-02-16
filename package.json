@@ -40,7 +40,7 @@
         {
           "type": "png",
           "name": "IMAGE_MENU_ICON",
-          "file": "hb-grayscale25x25.png",
+          "file": "hb-logo-grayscale25x25.png",
           "menuIcon": true
         }
       ]

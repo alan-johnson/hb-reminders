@@ -4,6 +4,8 @@
 # Feel free to customize this to your needs.
 #
 import os.path
+import shutil
+import json
 
 top = '.'
 out = 'build'
@@ -52,3 +54,17 @@ def build(ctx):
                                          'src/pkjs/**/*.json',
                                          'src/common/**/*.js']),
                    js_entry_file='src/pkjs/index.js')
+
+    # Copy .pbw to dist/ after bundling
+    def copy_pbw(ctx):
+        with open('package.json') as f:
+            version = json.load(f)['version']
+        dist_dir = ctx.path.get_bld().parent.make_node('dist').abspath()
+        if not os.path.exists(dist_dir):
+            os.makedirs(dist_dir)
+        src = os.path.join('build', 'hb-reminders.pbw')
+        dst = os.path.join(dist_dir, 'hb-reminders-{}.pbw'.format(version))
+        shutil.copy2(src, dst)
+        print('Copied {} -> {}'.format(src, dst))
+
+    ctx.add_post_fun(copy_pbw)

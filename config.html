@@ -69,6 +69,7 @@
 
     input[type="text"],
     input[type="number"],
+    input[type="password"],
     select {
       width: 100%;
       padding: 12px;
@@ -81,6 +82,7 @@
 
     input[type="text"]:focus,
     input[type="number"]:focus,
+    input[type="password"]:focus,
     select:focus {
       outline: none;
       border-color: #4CAF50;
@@ -134,6 +136,10 @@
       margin-top: 10px;
       font-size: 14px;
     }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -143,12 +149,25 @@
     </div>
 
     <div class="section">
-      <h2 class="section-title">HB Reminders Configuration</h2>
+      <h2 class="section-title">Server Type</h2>
 
       <div class="form-group">
-        <label for="hostname">Server Hostname or IP Address</label>
+        <label for="server-type">Server</label>
+        <select id="server-type">
+          <option value="local">Local Task Server</option>
+          <option value="enterprise">Enterprise Task Server</option>
+        </select>
+        <div class="help-text">Select which Handsbreadth Task Server you are connecting to</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Server Connection</h2>
+
+      <div class="form-group">
+        <label for="hostname">Hostname or IP Address</label>
         <input type="text" id="hostname" placeholder="127.0.0.1">
-        <div class="help-text">Enter the IP address or hostname of your Handsbreadth Task Server</div>
+        <div class="help-text">IP address or hostname of your Handsbreadth Task Server</div>
         <div class="example">
           <strong>Examples:</strong><br>
           • 192.168.1.100<br>
@@ -160,7 +179,22 @@
       <div class="form-group">
         <label for="port">Server Port</label>
         <input type="number" id="port" placeholder="3000" min="1" max="65535">
-        <div class="help-text">Enter the port number (typically 3000)</div>
+        <div id="port-help" class="help-text">Local server default: 3000 &nbsp;|&nbsp; Enterprise default: 3500</div>
+      </div>
+    </div>
+
+    <div class="section" id="enterprise-section" style="display:none;">
+      <h2 class="section-title">Enterprise Account</h2>
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="your username" autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="your password" autocomplete="current-password">
+        <div class="help-text">Credentials are stored locally on your phone and never shared</div>
       </div>
     </div>
 
@@ -171,7 +205,7 @@
         <label for="provider">Provider</label>
         <select id="provider">
           <option value="apple">Apple Reminders</option>
-          <option value="reminders-cli">Reminders CLI</option>
+          <option value="reminders-cli" class="local-only">Reminders CLI</option>
           <option value="google">Google Tasks</option>
           <option value="microsoft">Microsoft Tasks</option>
         </select>
@@ -192,23 +226,63 @@
       return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
     }
 
+    var DEFAULT_PORTS = { local: '3000', enterprise: '3500' };
+
     // Load existing settings
-    var hostname = getQueryParam('hostname') || '127.0.0.1';
-    var port = getQueryParam('port') || '3000';
-    var provider = getQueryParam('provider') || 'reminders-cli';
+    var serverType = getQueryParam('serverType') || 'local';
+    var hostname   = getQueryParam('hostname')   || '127.0.0.1';
+    var port       = getQueryParam('port')       || DEFAULT_PORTS[serverType];
+    var provider   = getQueryParam('provider')   || 'reminders-cli';
+    var username   = getQueryParam('username')   || '';
 
     // Populate form
-    document.getElementById('hostname').value = hostname;
-    document.getElementById('port').value = port;
-    document.getElementById('provider').value = provider;
+    document.getElementById('server-type').value = serverType;
+    document.getElementById('hostname').value    = hostname;
+    document.getElementById('port').value        = port;
+    document.getElementById('provider').value    = provider;
+    document.getElementById('username').value    = username;
+    // Password is never pre-filled
+
+    // Show/hide enterprise section and reminders-cli option
+    function applyServerType(type) {
+      var enterpriseSection = document.getElementById('enterprise-section');
+      var remindersCliOption = document.querySelector('option[value="reminders-cli"]');
+
+      if (type === 'enterprise') {
+        enterpriseSection.style.display = 'block';
+        remindersCliOption.style.display = 'none';
+        if (document.getElementById('provider').value === 'reminders-cli') {
+          document.getElementById('provider').value = 'apple';
+        }
+      } else {
+        enterpriseSection.style.display = 'none';
+        remindersCliOption.style.display = '';
+      }
+    }
+
+    applyServerType(serverType);
+
+    document.getElementById('server-type').addEventListener('change', function() {
+      var type = this.value;
+      applyServerType(type);
+      // Update port to the default for the selected server type only if
+      // the current port matches the other type's default
+      var currentPort = document.getElementById('port').value;
+      var otherDefault = type === 'enterprise' ? DEFAULT_PORTS.local : DEFAULT_PORTS.enterprise;
+      if (currentPort === otherDefault || currentPort === '') {
+        document.getElementById('port').value = DEFAULT_PORTS[type];
+      }
+    });
 
     // Save button handler
     document.getElementById('save-button').addEventListener('click', function() {
-      var newHostname = document.getElementById('hostname').value.trim();
-      var newPort = document.getElementById('port').value.trim();
-      var newProvider = document.getElementById('provider').value;
+      var newServerType = document.getElementById('server-type').value;
+      var newHostname   = document.getElementById('hostname').value.trim();
+      var newPort       = document.getElementById('port').value.trim();
+      var newProvider   = document.getElementById('provider').value;
+      var newUsername   = document.getElementById('username').value.trim();
+      var newPassword   = document.getElementById('password').value;
 
-      // Validate inputs
       if (!newHostname) {
         alert('Please enter a hostname or IP address');
         return;
@@ -219,14 +293,24 @@
         return;
       }
 
-      // Build result URL
+      if (newServerType === 'enterprise' && !newUsername) {
+        alert('Please enter your enterprise username');
+        return;
+      }
+
       var result = {
-        hostname: newHostname,
-        port: parseInt(newPort),
-        provider: newProvider
+        serverType: newServerType,
+        hostname:   newHostname,
+        port:       parseInt(newPort),
+        provider:   newProvider,
+        username:   newUsername
       };
 
-      // Send result back to Pebble
+      // Only include password if provided (avoids overwriting stored password when left blank)
+      if (newPassword) {
+        result.password = newPassword;
+      }
+
       var returnUrl = 'pebblejs://close#' + encodeURIComponent(JSON.stringify(result));
       window.location.href = returnUrl;
     });

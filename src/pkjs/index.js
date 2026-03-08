@@ -3,25 +3,85 @@ console.log('*** JavaScript file loaded! ***');
 
 // Configuration - can be overridden via localStorage
 var DEFAULT_HOSTNAME = "localhost";
-var DEFAULT_PORT = 3000;
+var DEFAULT_PORT_LOCAL = 3000;
+var DEFAULT_PORT_ENTERPRISE = 3500;
 var DEFAULT_PROVIDER = "reminders-cli";
 
 // Try to load from localStorage, fallback to defaults
-var hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-var port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
-var provider = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
-var API_BASE = "http://" + hostname + ":" + port + "/api";
+var serverType = localStorage.getItem('api_server_type') || 'local';
+var hostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+var port       = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+var provider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+var API_BASE   = "http://" + hostname + ":" + port + "/api";
 var listNameToId = {};  // Cache list name -> ID for task completion
 
-console.log('Using API:', API_BASE);
+// Enterprise JWT token
+var enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
 
-// Function to update API base URL
+console.log('Using API:', API_BASE, '| Server type:', serverType);
+
+// Build Authorization header value for enterprise requests
+function getAuthHeader() {
+  if (serverType === 'enterprise' && enterpriseJwt) {
+    return 'Bearer ' + enterpriseJwt;
+  }
+  return null;
+}
+
+// Attach auth header to an open XHR if enterprise
+function setAuthHeader(xhr) {
+  var auth = getAuthHeader();
+  if (auth) {
+    xhr.setRequestHeader('Authorization', auth);
+  }
+}
+
+// Authenticate with enterprise server and store JWT
+function authenticateEnterprise(callback) {
+  var username = localStorage.getItem('api_enterprise_username') || '';
+  var password = localStorage.getItem('api_enterprise_password') || '';
+
+  if (!username || !password) {
+    console.log('Enterprise auth: no credentials stored');
+    if (callback) callback(false);
+    return;
+  }
+
+  console.log('Authenticating with enterprise server...');
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', API_BASE.replace('/api', '') + '/auth/login', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        try {
+          var resp = JSON.parse(xhr.responseText);
+          enterpriseJwt = resp.token;
+          localStorage.setItem('api_enterprise_jwt', enterpriseJwt);
+          console.log('Enterprise auth successful');
+          if (callback) callback(true);
+        } catch (e) {
+          console.log('Enterprise auth: error parsing response:', e);
+          if (callback) callback(false);
+        }
+      } else {
+        console.log('Enterprise auth failed. Status:', xhr.status);
+        if (callback) callback(false);
+      }
+    }
+  };
+  xhr.send(JSON.stringify({ username: username, password: password }));
+}
+
+// Function to update API base URL and server config
 function updateAPIBase() {
-  hostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-  port = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT;
-  provider = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
-  API_BASE = "http://" + hostname + ":" + port + "/api";
-  console.log('Updated API:', API_BASE, 'Provider:', provider);
+  serverType = localStorage.getItem('api_server_type') || 'local';
+  hostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+  port       = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+  provider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+  API_BASE   = "http://" + hostname + ":" + port + "/api";
+  enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
+  console.log('Updated API:', API_BASE, '| Server type:', serverType, '| Provider:', provider);
 }
 
 // Listen for when the app is ready
@@ -78,10 +138,14 @@ function fetchTaskLists() {
   console.log('Fetching task lists from API...');
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists?' + 'provider=' + provider, true);
+  xhr.open('GET', API_BASE + '/lists?provider=' + provider, true);
+  setAuthHeader(xhr);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
+      if (xhr.status === 401 && serverType === 'enterprise') {
+        console.log('JWT expired, re-authenticating...');
+        authenticateEnterprise(function(ok) { if (ok) fetchTaskLists(); });
+      } else if (xhr.status === 200) {
         try {
           var response = JSON.parse(xhr.responseText);
           console.log('Received lists:', JSON.stringify(response));
@@ -157,12 +221,16 @@ function fetchTasks(listId) {
   console.log('Fetching tasks for list from API: ' + listId);
 
   var xhr = new XMLHttpRequest();
-  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks?' + 'provider=' + provider;
+  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks?provider=' + provider;
   console.log('Request URL:', url);
   xhr.open('GET', url, true);
+  setAuthHeader(xhr);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
+      if (xhr.status === 401 && serverType === 'enterprise') {
+        console.log('JWT expired, re-authenticating...');
+        authenticateEnterprise(function(ok) { if (ok) fetchTasks(listId); });
+      } else if (xhr.status === 200) {
         try {
           var response = JSON.parse(xhr.responseText);
           console.log('Received tasks:', JSON.stringify(response));
@@ -391,12 +459,15 @@ function completeTask(taskId, listName) {
   console.log('Completing task: ' + taskId + ' in list: ' + listName + ' (id: ' + listId + ')');
 
   var xhr = new XMLHttpRequest();
-  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks/' + encodeURIComponent(taskId) + '/complete?' + 'provider=' + provider;
+  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks/' + encodeURIComponent(taskId) + '/complete?provider=' + provider;
   xhr.open('PATCH', url, true);
-  xhr.setRequestHeader('Content-Type', 'application/json');
+  setAuthHeader(xhr);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
-      if (xhr.status === 200 || xhr.status === 204) {
+      if (xhr.status === 401 && serverType === 'enterprise') {
+        console.log('JWT expired, re-authenticating...');
+        authenticateEnterprise(function(ok) { if (ok) completeTask(taskId, listName); });
+      } else if (xhr.status === 200 || xhr.status === 204) {
         console.log('Task completed successfully');
         var dict = {
           'KEY_TYPE': 4,
@@ -416,17 +487,20 @@ function completeTask(taskId, listName) {
 Pebble.addEventListener('showConfiguration', function(e) {
   console.log('Opening configuration page...');
 
-  // Get current settings
-  var currentHostname = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-  var currentPort = localStorage.getItem('api_port') || DEFAULT_PORT;
-  var currentProvider = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+  var currentServerType = localStorage.getItem('api_server_type') || 'local';
+  var currentHostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+  var currentPort       = localStorage.getItem('api_port') || (currentServerType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+  var currentProvider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+  var currentUsername   = localStorage.getItem('api_enterprise_username') || '';
 
-  // Build configuration URL (v= cache buster)
+  // Build configuration URL (v= cache buster, password never passed to page)
   var configUrl = 'https://alan-johnson.github.io/hb-reminders/config.html' +
     '?v=' + Date.now() +
+    '&serverType=' + encodeURIComponent(currentServerType) +
     '&hostname=' + encodeURIComponent(currentHostname) +
     '&port=' + encodeURIComponent(currentPort) +
-    '&provider=' + encodeURIComponent(currentProvider);
+    '&provider=' + encodeURIComponent(currentProvider) +
+    '&username=' + encodeURIComponent(currentUsername);
 
   console.log('Config URL:', configUrl);
   Pebble.openURL(configUrl);
@@ -443,24 +517,39 @@ Pebble.addEventListener('webviewclosed', function(e) {
       console.log('Parsed config:', JSON.stringify(config));
 
       // Save settings to localStorage
+      if (config.serverType) {
+        localStorage.setItem('api_server_type', config.serverType);
+      }
       if (config.hostname) {
         localStorage.setItem('api_hostname', config.hostname);
-        console.log('Saved hostname:', config.hostname);
       }
-
       if (config.port) {
         localStorage.setItem('api_port', config.port.toString());
-        console.log('Saved port:', config.port);
       }
-
       if (config.provider) {
         localStorage.setItem('api_provider', config.provider);
-        console.log('Saved provider:', config.provider);
+      }
+      if (config.username) {
+        localStorage.setItem('api_enterprise_username', config.username);
+      }
+      if (config.password) {
+        localStorage.setItem('api_enterprise_password', config.password);
       }
 
-      // Update API base URL
+      // Update runtime vars
       updateAPIBase();
-      console.log('Configuration saved successfully');
+      console.log('Configuration saved. Server type:', config.serverType);
+
+      // If enterprise, obtain a JWT immediately so the first request works
+      if (config.serverType === 'enterprise') {
+        authenticateEnterprise(function(ok) {
+          console.log('Enterprise auth after config save:', ok ? 'success' : 'failed');
+        });
+      } else {
+        // Clear any stale enterprise JWT when switching back to local
+        enterpriseJwt = null;
+        localStorage.removeItem('api_enterprise_jwt');
+      }
 
     } catch (err) {
       console.log('Error parsing configuration:', err);

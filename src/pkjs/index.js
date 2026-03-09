@@ -444,9 +444,28 @@ function sendTasksToWatch(tasks) {
     // Map priority for watch display
     // Local: 1=Low, 2=Medium, 3=High; Enterprise: 4=Later, 5=Not Now, 6=Now
     var priority = 0;
-    if (serverType === 'enterprise' && task.importance) {
-      var importanceMap = { 'low': 4, 'normal': 5, 'high': 6 };
-      priority = importanceMap[task.importance] || 0;
+    if (serverType === 'enterprise') {
+      // Apply the same classification rules as the enterprise server web UI:
+      // Now:     overdue (due today or past) OR high importance
+      // Not Now: future due date OR normal importance
+      // Later:   everything else (catch-all)
+      var isOverdue = false;
+      var isFutureDue = false;
+      if (task.dueDate) {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var dueDay = new Date(task.dueDate);
+        dueDay.setHours(0, 0, 0, 0);
+        isOverdue = dueDay.getTime() <= today.getTime();
+        isFutureDue = dueDay.getTime() > today.getTime();
+      }
+      if (isOverdue || task.importance === 'high') {
+        priority = 6; // Now
+      } else if (isFutureDue || task.importance === 'normal') {
+        priority = 5; // Not Now
+      } else {
+        priority = 4; // Later
+      }
     } else if (task.priority) {
       priority = task.priority <= 3 ? task.priority : 3;
     }

@@ -213,6 +213,16 @@
       </div>
     </div>
 
+    <div class="section">
+      <h2 class="section-title">Task Display</h2>
+
+      <div class="form-group" style="display:flex; align-items:center; gap:12px;">
+        <input type="checkbox" id="show-completed" style="width:20px; height:20px; margin:0; cursor:pointer;">
+        <label for="show-completed" style="margin:0; cursor:pointer;">Show completed tasks</label>
+      </div>
+      <div class="help-text" style="margin-top:6px;">When off, only incomplete tasks are shown on the watch</div>
+    </div>
+
     <div class="button-group">
       <button class="btn-save" id="save-button">Save Settings</button>
       <button class="btn-cancel" id="cancel-button">Cancel</button>
@@ -229,18 +239,20 @@
     var DEFAULT_PORTS = { local: '3000', enterprise: '3500' };
 
     // Load existing settings
-    var serverType = getQueryParam('serverType') || 'local';
-    var hostname   = getQueryParam('hostname')   || '127.0.0.1';
-    var port       = getQueryParam('port')       || DEFAULT_PORTS[serverType];
-    var provider   = getQueryParam('provider')   || 'reminders-cli';
-    var username   = getQueryParam('username')   || '';
+    var serverType    = getQueryParam('serverType')    || 'local';
+    var hostname      = getQueryParam('hostname')      || '127.0.0.1';
+    var port          = getQueryParam('port')          || DEFAULT_PORTS[serverType];
+    var provider      = getQueryParam('provider')      || 'reminders-cli';
+    var username      = getQueryParam('username')      || '';
+    var showCompleted = getQueryParam('showCompleted') === '1';
 
     // Populate form
-    document.getElementById('server-type').value = serverType;
-    document.getElementById('hostname').value    = hostname;
-    document.getElementById('port').value        = port;
-    document.getElementById('provider').value    = provider;
-    document.getElementById('username').value    = username;
+    document.getElementById('server-type').value    = serverType;
+    document.getElementById('hostname').value       = hostname;
+    document.getElementById('port').value           = port;
+    document.getElementById('provider').value       = provider;
+    document.getElementById('username').value       = username;
+    document.getElementById('show-completed').checked = showCompleted;
     // Password is never pre-filled
 
     // Show/hide enterprise section and reminders-cli option
@@ -276,12 +288,13 @@
 
     // Save button handler
     document.getElementById('save-button').addEventListener('click', function() {
-      var newServerType = document.getElementById('server-type').value;
-      var newHostname   = document.getElementById('hostname').value.trim();
-      var newPort       = document.getElementById('port').value.trim();
-      var newProvider   = document.getElementById('provider').value;
-      var newUsername   = document.getElementById('username').value.trim();
-      var newPassword   = document.getElementById('password').value;
+      var newServerType    = document.getElementById('server-type').value;
+      var newHostname      = document.getElementById('hostname').value.trim();
+      var newPort          = document.getElementById('port').value.trim();
+      var newProvider      = document.getElementById('provider').value;
+      var newUsername      = document.getElementById('username').value.trim();
+      var newPassword      = document.getElementById('password').value;
+      var newShowCompleted = document.getElementById('show-completed').checked;
 
       if (!newHostname) {
         alert('Please enter a hostname or IP address');
@@ -299,11 +312,12 @@
       }
 
       var result = {
-        serverType: newServerType,
-        hostname:   newHostname,
-        port:       parseInt(newPort),
-        provider:   newProvider,
-        username:   newUsername
+        serverType:    newServerType,
+        hostname:      newHostname,
+        port:          parseInt(newPort),
+        provider:      newProvider,
+        username:      newUsername,
+        showCompleted: newShowCompleted
       };
 
       // Only include password if provided (avoids overwriting stored password when left blank)

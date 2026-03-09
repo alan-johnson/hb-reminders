@@ -11,7 +11,8 @@ var DEFAULT_PROVIDER = "reminders-cli";
 var serverType = localStorage.getItem('api_server_type') || 'local';
 var hostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
 var port       = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
-var provider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+var provider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+var showCompleted = localStorage.getItem('show_completed') === '1';
 var API_BASE   = "http://" + hostname + ":" + port + "/api";
 var listNameToId   = {};  // Cache list name  -> real ID for task completion
 var listIndexToId  = {};  // Cache list index -> real ID for fetchTasks
@@ -80,7 +81,8 @@ function updateAPIBase() {
   serverType = localStorage.getItem('api_server_type') || 'local';
   hostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
   port       = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
-  provider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+  provider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+  showCompleted = localStorage.getItem('show_completed') === '1';
   API_BASE   = "http://" + hostname + ":" + port + "/api";
   enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
   console.log('Updated API:', API_BASE, '| Server type:', serverType, '| Provider:', provider);
@@ -401,6 +403,10 @@ function convertDateToISO(dateStr) {
 
 // Send tasks to the watch sequentially with delays to avoid APP_MSG_BUSY
 function sendTasksToWatch(tasks) {
+  // Filter out completed tasks unless showCompleted is enabled
+  if (tasks && !showCompleted) {
+    tasks = tasks.filter(function(t) { return !t.completed; });
+  }
   var taskCount = (tasks && tasks.length) ? tasks.length : 0;
 
   // Cache task index -> real ID for completeTask (task IDs can be very long on enterprise)
@@ -515,7 +521,8 @@ Pebble.addEventListener('showConfiguration', function(e) {
   var currentHostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
   var currentPort       = localStorage.getItem('api_port') || (currentServerType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
   var currentProvider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
-  var currentUsername   = localStorage.getItem('api_enterprise_username') || '';
+  var currentUsername      = localStorage.getItem('api_enterprise_username') || '';
+  var currentShowCompleted = localStorage.getItem('show_completed') === '1' ? '1' : '0';
 
   // Build configuration URL (v= cache buster, password never passed to page)
   var configUrl = 'https://alan-johnson.github.io/hb-reminders/config.html' +
@@ -524,7 +531,8 @@ Pebble.addEventListener('showConfiguration', function(e) {
     '&hostname=' + encodeURIComponent(currentHostname) +
     '&port=' + encodeURIComponent(currentPort) +
     '&provider=' + encodeURIComponent(currentProvider) +
-    '&username=' + encodeURIComponent(currentUsername);
+    '&username=' + encodeURIComponent(currentUsername) +
+    '&showCompleted=' + currentShowCompleted;
 
   console.log('Config URL:', configUrl);
   Pebble.openURL(configUrl);
@@ -556,6 +564,8 @@ Pebble.addEventListener('webviewclosed', function(e) {
       if (config.username) {
         localStorage.setItem('api_enterprise_username', config.username);
       }
+      localStorage.setItem('show_completed', config.showCompleted ? '1' : '0');
+
       if (config.password) {
         localStorage.setItem('api_enterprise_password', config.password);
       }

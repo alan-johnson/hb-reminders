@@ -13,7 +13,9 @@ var hostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
 var port       = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
 var provider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
 var API_BASE   = "http://" + hostname + ":" + port + "/api";
-var listNameToId = {};  // Cache list name -> ID for task completion
+var listNameToId   = {};  // Cache list name  -> real ID for task completion
+var listIndexToId  = {};  // Cache list index -> real ID for fetchTasks
+var taskIndexToId  = {};  // Cache task index -> real ID for completeTask
 
 // Enterprise JWT token
 var enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
@@ -84,6 +86,16 @@ function updateAPIBase() {
   console.log('Updated API:', API_BASE, '| Server type:', serverType, '| Provider:', provider);
 }
 
+// Build provider query string — enterprise only supports microsoft/google;
+// for any other value omit the param and let the server use the user's defaultProvider
+function providerParam() {
+  var ENTERPRISE_PROVIDERS = ['microsoft', 'google'];
+  if (serverType === 'enterprise' && ENTERPRISE_PROVIDERS.indexOf(provider) === -1) {
+    return '';
+  }
+  return 'provider=' + provider;
+}
+
 // Listen for when the app is ready
 Pebble.addEventListener('ready', function(e) {
   console.warn('=== PEBBLE READY ===');
@@ -138,7 +150,7 @@ function fetchTaskLists() {
   console.log('Fetching task lists from API...');
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists?provider=' + provider, true);
+  xhr.open('GET', API_BASE + '/lists?' + providerParam(), true);
   setAuthHeader(xhr);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
@@ -163,14 +175,16 @@ function fetchTaskLists() {
 
 // Send task lists to the watch sequentially with delays to avoid APP_MSG_BUSY
 function sendTaskListsToWatch(lists) {
-  // Cache list name -> ID mapping for task completion
-  listNameToId = {};
+  // Cache mappings: name->realId for completeTask, index->realId for fetchTasks
+  listNameToId  = {};
+  listIndexToId = {};
   for (var i = 0; i < lists.length; i++) {
-    var id = lists[i].id || i;
-    var name = lists[i].name || lists[i];
-    listNameToId[name] = id;
+    var realId = lists[i].id || String(i);
+    var name   = lists[i].name || lists[i];
+    listNameToId[name]    = realId;
+    listIndexToId[String(i)] = realId;
   }
-  console.log('Cached list name->ID map:', JSON.stringify(listNameToId));
+  console.log('List index->ID map:', JSON.stringify(listIndexToId));
 
   var currentIndex = 0;
   var retryDelay = 500;
@@ -183,7 +197,7 @@ function sendTaskListsToWatch(lists) {
 
     var dict = {
       'KEY_TYPE': 1,
-      'KEY_ID': lists[currentIndex].id || currentIndex,
+      'KEY_ID': String(currentIndex),  // send index; JS maps to real ID in fetchTasks
       'KEY_NAME': lists[currentIndex].name || lists[currentIndex]
     };
 
@@ -218,10 +232,12 @@ function sendTaskListsToWatch(lists) {
 
 // Fetch tasks for a specific list
 function fetchTasks(listId) {
-  console.log('Fetching tasks for list from API: ' + listId);
+  // listId from watch is an array index; resolve to the real provider list ID
+  var realListId = listIndexToId[String(listId)] || listId;
+  console.log('Fetching tasks for list index=' + listId + ' realId=' + realListId);
 
   var xhr = new XMLHttpRequest();
-  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks?provider=' + provider;
+  var url = API_BASE + '/lists/' + encodeURIComponent(realListId) + '/tasks?' + providerParam();
   console.log('Request URL:', url);
   xhr.open('GET', url, true);
   setAuthHeader(xhr);
@@ -229,7 +245,7 @@ function fetchTasks(listId) {
     if (xhr.readyState === 4) {
       if (xhr.status === 401 && serverType === 'enterprise') {
         console.log('JWT expired, re-authenticating...');
-        authenticateEnterprise(function(ok) { if (ok) fetchTasks(listId); });
+        authenticateEnterprise(function(ok) { if (ok) fetchTasks(listId); });  // listId = original index
       } else if (xhr.status === 200) {
         try {
           var response = JSON.parse(xhr.responseText);
@@ -387,6 +403,12 @@ function convertDateToISO(dateStr) {
 function sendTasksToWatch(tasks) {
   var taskCount = (tasks && tasks.length) ? tasks.length : 0;
 
+  // Cache task index -> real ID for completeTask (task IDs can be very long on enterprise)
+  taskIndexToId = {};
+  for (var i = 0; i < taskCount; i++) {
+    taskIndexToId[String(i)] = tasks[i].id || String(i);
+  }
+
   // Send tasks one at a time with delay to avoid APP_MSG_BUSY
   var currentIndex = 0;
   var retryDelay = 500;
@@ -410,16 +432,16 @@ function sendTasksToWatch(tasks) {
         dueDate = 'No due date';
       }
     }
-    var maxLength = 255; // Max length for notes
-    task.notes = task.notes.slice(0, maxLength);
+
+    var notes = (task.notes || '').slice(0, 255);
 
     var dict = {
       'KEY_TYPE': 2,
-      'KEY_ID': task.id || '',
+      'KEY_ID': String(currentIndex),  // send index; JS maps to real ID in completeTask
       'KEY_NAME': task.name || '',
       'KEY_DUE_DATE': dueDate,
       'KEY_COMPLETED': task.completed ? 1 : 0,
-      'KEY_NOTES': task.notes || ''
+      'KEY_NOTES': notes
     };
 
     Pebble.sendAppMessage(dict,
@@ -455,11 +477,13 @@ function sendTasksToWatch(tasks) {
 
 // Complete a task
 function completeTask(taskId, listName) {
-  var listId = listNameToId[listName] || listName;
-  console.log('Completing task: ' + taskId + ' in list: ' + listName + ' (id: ' + listId + ')');
+  // taskId from watch is an array index; resolve to real provider task ID
+  var realTaskId = taskIndexToId[String(taskId)] || taskId;
+  var listId     = listNameToId[listName] || listName;
+  console.log('Completing task index=' + taskId + ' realId=' + realTaskId + ' in list: ' + listName + ' (listId: ' + listId + ')');
 
   var xhr = new XMLHttpRequest();
-  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks/' + encodeURIComponent(taskId) + '/complete?provider=' + provider;
+  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks/' + encodeURIComponent(realTaskId) + '/complete?' + providerParam();
   xhr.open('PATCH', url, true);
   setAuthHeader(xhr);
   xhr.onload = function() {

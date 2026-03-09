@@ -441,13 +441,24 @@ function sendTasksToWatch(tasks) {
 
     var notes = (task.notes || '').slice(0, 255);
 
+    // Map priority for watch display
+    // Local: 1=Low, 2=Medium, 3=High; Enterprise: 4=Later, 5=Not Now, 6=Now
+    var priority = 0;
+    if (serverType === 'enterprise' && task.importance) {
+      var importanceMap = { 'low': 4, 'normal': 5, 'high': 6 };
+      priority = importanceMap[task.importance] || 0;
+    } else if (task.priority) {
+      priority = task.priority <= 3 ? task.priority : 3;
+    }
+
     var dict = {
       'KEY_TYPE': 2,
       'KEY_ID': String(currentIndex),  // send index; JS maps to real ID in completeTask
       'KEY_NAME': task.name || '',
       'KEY_DUE_DATE': dueDate,
       'KEY_COMPLETED': task.completed ? 1 : 0,
-      'KEY_NOTES': notes
+      'KEY_NOTES': notes,
+      'KEY_PRIORITY': priority
     };
 
     Pebble.sendAppMessage(dict,

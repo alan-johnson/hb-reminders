@@ -225,7 +225,12 @@ void task_detail_view_show(Task *task) {
            STR_TASK_LABEL, task->name,
            STR_DUE_LABEL, s_time_buffer,
            STR_STATUS_LABEL, task->completed ? STR_COMPLETED : STR_PENDING,
-           STR_PRIORITY_LABEL, task->priority == 1 ? STR_PRIORITY_LOW : (task->priority == 2 ? STR_PRIORITY_MEDIUM : STR_PRIORITY_HIGH),
+           STR_PRIORITY_LABEL, task->priority == 1 ? STR_PRIORITY_LOW :
+                               (task->priority == 2 ? STR_PRIORITY_MEDIUM :
+                               (task->priority == 3 ? STR_PRIORITY_HIGH :
+                               (task->priority == 4 ? STR_PRIORITY_LATER :
+                               (task->priority == 5 ? STR_PRIORITY_NOT_NOW :
+                               (task->priority == 6 ? STR_PRIORITY_NOW : ""))))),
            STR_NOTES_LABEL, task->notes,
            STR_SELECT_TO_MARK_COMPLETE);
 

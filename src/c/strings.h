@@ -18,10 +18,15 @@
 #define STR_COMPLETED "Completed"
 #define STR_PENDING "Pending"
 
-// Task priority strings
+// Task priority strings - local server
 #define STR_PRIORITY_LOW "Low"
 #define STR_PRIORITY_MEDIUM "Medium"
 #define STR_PRIORITY_HIGH "High"
+
+// Task priority strings - enterprise server (classification labels)
+#define STR_PRIORITY_LATER   "Later"
+#define STR_PRIORITY_NOT_NOW "Not Now"
+#define STR_PRIORITY_NOW     "Now"
 
 // Detail view labels
 #define STR_TASK_LABEL "Task: "

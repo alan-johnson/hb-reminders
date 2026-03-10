@@ -33,6 +33,7 @@
 #define STR_DUE_LABEL "Due: "
 #define STR_STATUS_LABEL "Status: "
 #define STR_PRIORITY_LABEL "Priority: "
+#define STR_CLASSIFICATION_LABEL "Classification: "
 #define STR_NOTES_LABEL "Notes: "
 
 // Instructions

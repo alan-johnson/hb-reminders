@@ -407,6 +407,22 @@ function sendTasksToWatch(tasks) {
   if (tasks && !showCompleted) {
     tasks = tasks.filter(function(t) { return !t.completed; });
   }
+
+  // Sort by classification for enterprise (Now → Not Now → Later),
+  // or by priority descending for local server
+  if (tasks && tasks.length > 1) {
+    var classificationOrder = { 'now': 0, 'not_now': 1, 'later': 2 };
+    tasks = tasks.slice().sort(function(a, b) {
+      if (serverType === 'enterprise') {
+        var aOrder = a.classification in classificationOrder ? classificationOrder[a.classification] : 3;
+        var bOrder = b.classification in classificationOrder ? classificationOrder[b.classification] : 3;
+        return aOrder - bOrder;
+      } else {
+        return (b.priority || 0) - (a.priority || 0);
+      }
+    });
+  }
+
   var taskCount = (tasks && tasks.length) ? tasks.length : 0;
 
   // Cache task index -> real ID for completeTask (task IDs can be very long on enterprise)

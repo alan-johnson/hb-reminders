@@ -5,7 +5,7 @@ console.log('*** JavaScript file loaded! ***');
 var DEFAULT_HOSTNAME          = "localhost";
 var DEFAULT_PORT_LOCAL        = 3000;
 var DEFAULT_PROVIDER          = "reminders-cli";
-var ENTERPRISE_API_BASE       = "https://tasks.handsbreadth.com/api";
+var ENTERPRISE_API_BASE       = "https://tasks.handsbreadth.com:3500/api";
 
 // Try to load from localStorage, fallback to defaults
 var serverType    = localStorage.getItem('api_server_type') || 'local';
@@ -553,7 +553,7 @@ Pebble.addEventListener('showConfiguration', function(e) {
 
   var currentServerType    = localStorage.getItem('api_server_type') || 'local';
   var currentHostname      = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-  var currentPort          = localStorage.getItem('api_port') || (currentServerType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+  var currentPort          = localStorage.getItem('api_port') || DEFAULT_PORT_LOCAL;
   var currentProvider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
   var currentUsername      = localStorage.getItem('api_enterprise_username') || '';
   var currentHasPassword   = localStorage.getItem('api_enterprise_password') ? '1' : '0';

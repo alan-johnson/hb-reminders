@@ -161,7 +161,7 @@
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" id="connection-section">
       <h2 class="section-title">Server Connection</h2>
 
       <div class="form-group">
@@ -199,7 +199,7 @@
     </div>
 
 
-    <div class="section" id="provider-section">
+    <div class="section" id="provider-section" style="display:none;">
       <h2 class="section-title">Task Provider</h2>
 
       <div class="form-group">
@@ -237,12 +237,10 @@
       return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
     }
 
-    var DEFAULT_PORTS = { local: '3000', enterprise: '3500' };
-
     // Load existing settings
     var serverType    = getQueryParam('serverType')  || 'local';
     var hostname      = getQueryParam('hostname')    || '127.0.0.1';
-    var port          = getQueryParam('port')        || DEFAULT_PORTS[serverType];
+    var port          = getQueryParam('port')        || '3000';
     var provider      = getQueryParam('provider')    || 'reminders-cli';
     var username      = getQueryParam('username')    || '';
     var hasPassword   = getQueryParam('hasPassword') === '1';
@@ -260,15 +258,20 @@
       document.getElementById('password').placeholder = 'Leave blank to keep saved password';
     }
 
-    // Show/hide enterprise section and provider section based on server type
+    // Show/hide sections based on server type.
+    // Enterprise: fixed hostname (tasks.handsbreadth.com), no port, no provider selector.
+    // Local: hostname/port and provider selector shown.
     function applyServerType(type) {
+      var connectionSection = document.getElementById('connection-section');
       var enterpriseSection = document.getElementById('enterprise-section');
       var providerSection   = document.getElementById('provider-section');
 
       if (type === 'enterprise') {
+        connectionSection.style.display = 'none';
         enterpriseSection.style.display = 'block';
         providerSection.style.display   = 'none';
       } else {
+        connectionSection.style.display = 'block';
         enterpriseSection.style.display = 'none';
         providerSection.style.display   = 'block';
       }
@@ -277,15 +280,7 @@
     applyServerType(serverType);
 
     document.getElementById('server-type').addEventListener('change', function() {
-      var type = this.value;
-      applyServerType(type);
-      // Update port to the default for the selected server type only if
-      // the current port matches the other type's default
-      var currentPort = document.getElementById('port').value;
-      var otherDefault = type === 'enterprise' ? DEFAULT_PORTS.local : DEFAULT_PORTS.enterprise;
-      if (currentPort === otherDefault || currentPort === '') {
-        document.getElementById('port').value = DEFAULT_PORTS[type];
-      }
+      applyServerType(this.value);
     });
 
     // Save button handler
@@ -298,14 +293,15 @@
       var newPassword      = document.getElementById('password').value;
       var newShowCompleted = document.getElementById('show-completed').checked;
 
-      if (!newHostname) {
-        alert('Please enter a hostname or IP address');
-        return;
-      }
-
-      if (!newPort || parseInt(newPort) < 1 || parseInt(newPort) > 65535) {
-        alert('Please enter a valid port number (1-65535)');
-        return;
+      if (newServerType === 'local') {
+        if (!newHostname) {
+          alert('Please enter a hostname or IP address');
+          return;
+        }
+        if (!newPort || parseInt(newPort) < 1 || parseInt(newPort) > 65535) {
+          alert('Please enter a valid port number (1-65535)');
+          return;
+        }
       }
 
       if (newServerType === 'enterprise' && !newUsername) {
@@ -316,7 +312,7 @@
       var result = {
         serverType:    newServerType,
         hostname:      newHostname,
-        port:          parseInt(newPort),
+        port:          parseInt(newPort) || 3000,
         provider:      newProvider,
         username:      newUsername,
         showCompleted: newShowCompleted

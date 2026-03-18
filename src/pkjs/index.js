@@ -2,18 +2,20 @@
 console.log('*** JavaScript file loaded! ***');
 
 // Configuration - can be overridden via localStorage
-var DEFAULT_HOSTNAME = "localhost";
-var DEFAULT_PORT_LOCAL = 3000;
-var DEFAULT_PORT_ENTERPRISE = 3500;
-var DEFAULT_PROVIDER = "reminders-cli";
+var DEFAULT_HOSTNAME          = "localhost";
+var DEFAULT_PORT_LOCAL        = 3000;
+var DEFAULT_PROVIDER          = "reminders-cli";
+var ENTERPRISE_API_BASE       = "https://tasks.handsbreadth.com/api";
 
 // Try to load from localStorage, fallback to defaults
 var serverType    = localStorage.getItem('api_server_type') || 'local';
 var hostname      = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-var port          = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+var port          = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT_LOCAL;
 var provider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
 var showCompleted = localStorage.getItem('show_completed') === '1';
-var API_BASE      = "http://" + hostname + ":" + port + "/api";
+var API_BASE      = serverType === 'enterprise'
+                      ? ENTERPRISE_API_BASE
+                      : "http://" + hostname + ":" + port + "/api";
 var listNameToId  = {};  // Cache list name  -> real ID for task completion
 var listIndexToId = {};  // Cache list index -> real ID for fetchTasks
 var taskIndexToId = {};  // Cache task index -> real ID for completeTask
@@ -80,10 +82,12 @@ function authenticateEnterprise(callback) {
 function updateAPIBase() {
   serverType    = localStorage.getItem('api_server_type') || 'local';
   hostname      = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-  port          = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+  port          = parseInt(localStorage.getItem('api_port')) || DEFAULT_PORT_LOCAL;
   provider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
   showCompleted = localStorage.getItem('show_completed') === '1';
-  API_BASE      = "http://" + hostname + ":" + port + "/api";
+  API_BASE      = serverType === 'enterprise'
+                    ? ENTERPRISE_API_BASE
+                    : "http://" + hostname + ":" + port + "/api";
   enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
   console.log('Updated API:', API_BASE, '| Server type:', serverType, '| Provider:', provider);
 }

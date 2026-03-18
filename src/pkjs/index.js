@@ -8,15 +8,15 @@ var DEFAULT_PORT_ENTERPRISE = 3500;
 var DEFAULT_PROVIDER = "reminders-cli";
 
 // Try to load from localStorage, fallback to defaults
-var serverType = localStorage.getItem('api_server_type') || 'local';
-var hostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-var port       = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+var serverType    = localStorage.getItem('api_server_type') || 'local';
+var hostname      = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+var port          = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
 var provider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
 var showCompleted = localStorage.getItem('show_completed') === '1';
-var API_BASE   = "http://" + hostname + ":" + port + "/api";
-var listNameToId   = {};  // Cache list name  -> real ID for task completion
-var listIndexToId  = {};  // Cache list index -> real ID for fetchTasks
-var taskIndexToId  = {};  // Cache task index -> real ID for completeTask
+var API_BASE      = "http://" + hostname + ":" + port + "/api";
+var listNameToId  = {};  // Cache list name  -> real ID for task completion
+var listIndexToId = {};  // Cache list index -> real ID for fetchTasks
+var taskIndexToId = {};  // Cache task index -> real ID for completeTask
 
 // Enterprise JWT token
 var enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
@@ -31,7 +31,7 @@ function getAuthHeader() {
   return null;
 }
 
-// Attach auth header to an open XHR if enterprise
+// Attach JWT auth header for enterprise requests
 function setAuthHeader(xhr) {
   var auth = getAuthHeader();
   if (auth) {
@@ -78,21 +78,21 @@ function authenticateEnterprise(callback) {
 
 // Function to update API base URL and server config
 function updateAPIBase() {
-  serverType = localStorage.getItem('api_server_type') || 'local';
-  hostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-  port       = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+  serverType    = localStorage.getItem('api_server_type') || 'local';
+  hostname      = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+  port          = parseInt(localStorage.getItem('api_port')) || (serverType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
   provider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
   showCompleted = localStorage.getItem('show_completed') === '1';
-  API_BASE   = "http://" + hostname + ":" + port + "/api";
+  API_BASE      = "http://" + hostname + ":" + port + "/api";
   enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
   console.log('Updated API:', API_BASE, '| Server type:', serverType, '| Provider:', provider);
 }
 
-// Build provider query string — enterprise only supports microsoft/google;
-// for any other value omit the param and let the server use the user's defaultProvider
+// Build provider query string.
+// Enterprise server uses the user's defaultProvider — no override needed.
+// Local server uses the provider selected in config.
 function providerParam() {
-  var ENTERPRISE_PROVIDERS = ['microsoft', 'google'];
-  if (serverType === 'enterprise' && ENTERPRISE_PROVIDERS.indexOf(provider) === -1) {
+  if (serverType === 'enterprise') {
     return '';
   }
   return 'provider=' + provider;
@@ -408,8 +408,8 @@ function sendTasksToWatch(tasks) {
     tasks = tasks.filter(function(t) { return !t.completed; });
   }
 
-  // Sort by classification for enterprise (Now → Not Now → Later),
-  // or by priority descending for local server
+  // Sort by classification for enterprise microsoft/google (Now → Not Now → Later),
+  // or by priority descending for local server and enterprise apple
   if (tasks && tasks.length > 1) {
     var classificationOrder = { 'now': 0, 'not_now': 1, 'later': 2 };
     tasks = tasks.slice().sort(function(a, b) {
@@ -461,11 +461,12 @@ function sendTasksToWatch(tasks) {
     // Local: 1=Low, 2=Medium, 3=High; Enterprise: 4=Later, 5=Not Now, 6=Now
     var priority = 0;
     if (serverType === 'enterprise') {
-      // Server computes classification and returns task.classification:
+      // Enterprise server returns task.classification for all providers:
       // "now" | "not_now" | "later" | null (completed tasks)
       var classificationMap = { 'now': 6, 'not_now': 5, 'later': 4 };
       priority = classificationMap[task.classification] || 0;
     } else if (task.priority) {
+      // Local server and enterprise apple: numeric priority (1=high, 2=medium, 3=low)
       priority = task.priority <= 3 ? task.priority : 3;
     }
 
@@ -546,11 +547,12 @@ function completeTask(taskId, listName) {
 Pebble.addEventListener('showConfiguration', function(e) {
   console.log('Opening configuration page...');
 
-  var currentServerType = localStorage.getItem('api_server_type') || 'local';
-  var currentHostname   = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-  var currentPort       = localStorage.getItem('api_port') || (currentServerType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
-  var currentProvider   = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+  var currentServerType    = localStorage.getItem('api_server_type') || 'local';
+  var currentHostname      = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+  var currentPort          = localStorage.getItem('api_port') || (currentServerType === 'enterprise' ? DEFAULT_PORT_ENTERPRISE : DEFAULT_PORT_LOCAL);
+  var currentProvider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
   var currentUsername      = localStorage.getItem('api_enterprise_username') || '';
+  var currentHasPassword   = localStorage.getItem('api_enterprise_password') ? '1' : '0';
   var currentShowCompleted = localStorage.getItem('show_completed') === '1' ? '1' : '0';
 
   // Build configuration URL (v= cache buster, password never passed to page)
@@ -561,6 +563,7 @@ Pebble.addEventListener('showConfiguration', function(e) {
     '&port=' + encodeURIComponent(currentPort) +
     '&provider=' + encodeURIComponent(currentProvider) +
     '&username=' + encodeURIComponent(currentUsername) +
+    '&hasPassword=' + currentHasPassword +
     '&showCompleted=' + currentShowCompleted;
 
   console.log('Config URL:', configUrl);

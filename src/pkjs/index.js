@@ -5,7 +5,7 @@ console.log('*** JavaScript file loaded! ***');
 var DEFAULT_HOSTNAME          = "localhost";
 var DEFAULT_PORT_LOCAL        = 3000;
 var DEFAULT_PROVIDER          = "reminders-cli";
-var ENTERPRISE_API_BASE       = "http://tasks.handsbreadth.com:3500/api";
+var ENTERPRISE_API_BASE       = "https://tasks.handsbreadth.com/api";
 
 // Try to load from localStorage, fallback to defaults
 var serverType    = localStorage.getItem('api_server_type') || 'local';

@@ -198,6 +198,36 @@
       </div>
     </div>
 
+    <div class="section" id="enterprise-providers-section" style="display:none;">
+      <h2 class="section-title">Providers</h2>
+
+      <div class="form-group">
+        <label>Which task providers to show on your watch</label>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; margin-top:8px;">
+          <input type="radio" name="ep-filter" id="ep-all" value="all" style="width:20px; height:20px; margin:0; cursor:pointer;">
+          <label for="ep-all" style="margin:0; cursor:pointer; font-weight:normal;">All connected providers</label>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+          <input type="radio" name="ep-filter" id="ep-custom" value="custom" style="width:20px; height:20px; margin:0; cursor:pointer;">
+          <label for="ep-custom" style="margin:0; cursor:pointer; font-weight:normal;">Choose providers:</label>
+        </div>
+        <div id="ep-checkboxes" style="display:none; padding-left:32px; margin-top:8px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+            <input type="checkbox" id="ep-microsoft" style="width:20px; height:20px; margin:0; cursor:pointer;">
+            <label for="ep-microsoft" style="margin:0; cursor:pointer; font-weight:normal;">Microsoft Tasks</label>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+            <input type="checkbox" id="ep-google" style="width:20px; height:20px; margin:0; cursor:pointer;">
+            <label for="ep-google" style="margin:0; cursor:pointer; font-weight:normal;">Google Tasks</label>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <input type="checkbox" id="ep-apple" style="width:20px; height:20px; margin:0; cursor:pointer;">
+            <label for="ep-apple" style="margin:0; cursor:pointer; font-weight:normal;">Apple Reminders</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <div class="section" id="provider-section" style="display:none;">
       <h2 class="section-title">Task Provider</h2>
@@ -238,13 +268,14 @@
     }
 
     // Load existing settings
-    var serverType    = getQueryParam('serverType')  || 'local';
-    var hostname      = getQueryParam('hostname')    || '127.0.0.1';
-    var port          = getQueryParam('port')        || '3000';
-    var provider      = getQueryParam('provider')    || 'reminders-cli';
-    var username      = getQueryParam('username')    || '';
-    var hasPassword   = getQueryParam('hasPassword') === '1';
-    var showCompleted = getQueryParam('showCompleted') === '1';
+    var serverType         = getQueryParam('serverType')         || 'local';
+    var hostname           = getQueryParam('hostname')           || '127.0.0.1';
+    var port               = getQueryParam('port')               || '3000';
+    var provider           = getQueryParam('provider')           || 'reminders-cli';
+    var username           = getQueryParam('username')           || '';
+    var hasPassword        = getQueryParam('hasPassword')        === '1';
+    var showCompleted      = getQueryParam('showCompleted')      === '1';
+    var enterpriseProviders = getQueryParam('enterpriseProviders') || 'all';
 
     // Populate form
     document.getElementById('server-type').value      = serverType;
@@ -258,22 +289,43 @@
       document.getElementById('password').placeholder = 'Leave blank to keep saved password';
     }
 
+    // Populate enterprise provider filter
+    var isCustom = enterpriseProviders !== 'all';
+    document.getElementById(isCustom ? 'ep-custom' : 'ep-all').checked = true;
+    if (isCustom) {
+      document.getElementById('ep-checkboxes').style.display = 'block';
+      var selected = enterpriseProviders.split(',');
+      document.getElementById('ep-microsoft').checked = selected.indexOf('microsoft') !== -1;
+      document.getElementById('ep-google').checked    = selected.indexOf('google')    !== -1;
+      document.getElementById('ep-apple').checked     = selected.indexOf('apple')     !== -1;
+    }
+
+    document.querySelectorAll('input[name="ep-filter"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        document.getElementById('ep-checkboxes').style.display =
+          this.value === 'custom' ? 'block' : 'none';
+      });
+    });
+
     // Show/hide sections based on server type.
     // Enterprise: fixed hostname (tasks.handsbreadth.com), no port, no provider selector.
     // Local: hostname/port and provider selector shown.
     function applyServerType(type) {
-      var connectionSection = document.getElementById('connection-section');
-      var enterpriseSection = document.getElementById('enterprise-section');
-      var providerSection   = document.getElementById('provider-section');
+      var connectionSection          = document.getElementById('connection-section');
+      var enterpriseSection          = document.getElementById('enterprise-section');
+      var enterpriseProvidersSection = document.getElementById('enterprise-providers-section');
+      var providerSection            = document.getElementById('provider-section');
 
       if (type === 'enterprise') {
-        connectionSection.style.display = 'none';
-        enterpriseSection.style.display = 'block';
-        providerSection.style.display   = 'none';
+        connectionSection.style.display          = 'none';
+        enterpriseSection.style.display          = 'block';
+        enterpriseProvidersSection.style.display = 'block';
+        providerSection.style.display            = 'none';
       } else {
-        connectionSection.style.display = 'block';
-        enterpriseSection.style.display = 'none';
-        providerSection.style.display   = 'block';
+        connectionSection.style.display          = 'block';
+        enterpriseSection.style.display          = 'none';
+        enterpriseProvidersSection.style.display = 'none';
+        providerSection.style.display            = 'block';
       }
     }
 
@@ -309,13 +361,23 @@
         return;
       }
 
+      var newEnterpriseProviders = 'all';
+      if (newServerType === 'enterprise' && document.getElementById('ep-custom').checked) {
+        var chosen = [];
+        if (document.getElementById('ep-microsoft').checked) chosen.push('microsoft');
+        if (document.getElementById('ep-google').checked)    chosen.push('google');
+        if (document.getElementById('ep-apple').checked)     chosen.push('apple');
+        newEnterpriseProviders = chosen.length > 0 ? chosen.join(',') : 'all';
+      }
+
       var result = {
-        serverType:    newServerType,
-        hostname:      newHostname,
-        port:          parseInt(newPort) || 3000,
-        provider:      newProvider,
-        username:      newUsername,
-        showCompleted: newShowCompleted
+        serverType:          newServerType,
+        hostname:            newHostname,
+        port:                parseInt(newPort) || 3000,
+        provider:            newProvider,
+        username:            newUsername,
+        showCompleted:       newShowCompleted,
+        enterpriseProviders: newEnterpriseProviders
       };
 
       // Only include password if provided (avoids overwriting stored password when left blank)

@@ -16,9 +16,11 @@ var showCompleted = localStorage.getItem('show_completed') === '1';
 var API_BASE      = serverType === 'enterprise'
                       ? ENTERPRISE_API_BASE
                       : "http://" + hostname + ":" + port + "/api";
-var listNameToId  = {};  // Cache list name  -> real ID for task completion
-var listIndexToId = {};  // Cache list index -> real ID for fetchTasks
-var taskIndexToId = {};  // Cache task index -> real ID for completeTask
+var listNameToId       = {};  // Cache list name  -> real ID for task completion
+var listIndexToId      = {};  // Cache list index -> real ID for fetchTasks
+var listIndexToProvider = {}; // Cache list index -> provider (enterprise only)
+var listNameToProvider  = {}; // Cache list name  -> provider (enterprise only)
+var taskIndexToId      = {};  // Cache task index -> real ID for completeTask
 
 // Enterprise JWT token
 var enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
@@ -52,11 +54,13 @@ function authenticateEnterprise(callback) {
     return;
   }
 
-  console.log('Authenticating with enterprise server...');
+  var authUrl = API_BASE.replace('/api', '') + '/auth/login';
+  console.log('Authenticating with enterprise server at:', authUrl);
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', API_BASE.replace('/api', '') + '/auth/login', true);
+  xhr.open('POST', authUrl, true);
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.onload = function() {
+    console.log('Auth onload: status=' + xhr.status);
     if (xhr.readyState === 4) {
       if (xhr.status === 200) {
         try {
@@ -70,11 +74,20 @@ function authenticateEnterprise(callback) {
           if (callback) callback(false);
         }
       } else {
-        console.log('Enterprise auth failed. Status:', xhr.status);
+        console.log('Enterprise auth failed. Status:', xhr.status, 'Body:', xhr.responseText.slice(0, 200));
         if (callback) callback(false);
       }
     }
   };
+  xhr.onerror = function() {
+    console.log('Auth XHR network error (onerror fired)');
+    if (callback) callback(false);
+  };
+  xhr.ontimeout = function() {
+    console.log('Auth XHR timed out');
+    if (callback) callback(false);
+  };
+  xhr.timeout = 15000;
   xhr.send(JSON.stringify({ username: username, password: password }));
 }
 
@@ -155,10 +168,16 @@ Pebble.addEventListener('appmessage', function(e) {
 function fetchTaskLists() {
   console.log('Fetching task lists from API...');
 
+  var url = serverType === 'enterprise'
+              ? API_BASE + '/lists/all'
+              : API_BASE + '/lists?' + providerParam();
+  var enterpriseProviderFilter = localStorage.getItem('enterprise_provider_filter') || 'all';
+  console.log('Lists URL:', url, '| serverType:', serverType, '| hasJwt:', !!enterpriseJwt, '| providerFilter:', enterpriseProviderFilter);
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_BASE + '/lists?' + providerParam(), true);
+  xhr.open('GET', url, true);
   setAuthHeader(xhr);
   xhr.onload = function() {
+    console.log('Lists onload: status=' + xhr.status + ' readyState=' + xhr.readyState);
     if (xhr.readyState === 4) {
       if (xhr.status === 401 && serverType === 'enterprise') {
         console.log('JWT expired, re-authenticating...');
@@ -167,28 +186,46 @@ function fetchTaskLists() {
         try {
           var response = JSON.parse(xhr.responseText);
           console.log('Received lists:', JSON.stringify(response));
-          sendTaskListsToWatch(response.lists);
+          var lists = response.lists;
+          if (serverType === 'enterprise' && enterpriseProviderFilter !== 'all') {
+            var allowed = enterpriseProviderFilter.split(',');
+            lists = lists.filter(function(l) { return allowed.indexOf(l.provider) !== -1; });
+            console.log('Filtered to providers [' + enterpriseProviderFilter + ']: ' + lists.length + ' lists');
+          }
+          sendTaskListsToWatch(lists);
         } catch (e) {
           console.log('Error parsing response:', e);
         }
       } else {
-        console.log('Failed to fetch task lists. Status:', xhr.status);
+        console.log('Failed to fetch task lists. Status:', xhr.status, 'Body:', xhr.responseText.slice(0, 200));
       }
     }
   };
+  xhr.onerror = function() {
+    console.log('Lists XHR network error (onerror fired). status=' + xhr.status);
+  };
+  xhr.ontimeout = function() {
+    console.log('Lists XHR timed out');
+  };
+  xhr.timeout = 15000;
   xhr.send();
 }
 
 // Send task lists to the watch sequentially with delays to avoid APP_MSG_BUSY
 function sendTaskListsToWatch(lists) {
   // Cache mappings: name->realId for completeTask, index->realId for fetchTasks
-  listNameToId  = {};
-  listIndexToId = {};
+  listNameToId        = {};
+  listIndexToId       = {};
+  listIndexToProvider = {};
+  listNameToProvider  = {};
   for (var i = 0; i < lists.length; i++) {
-    var realId = lists[i].id || String(i);
-    var name   = lists[i].name || lists[i];
-    listNameToId[name]    = realId;
-    listIndexToId[String(i)] = realId;
+    var realId   = lists[i].id || String(i);
+    var name     = lists[i].name || lists[i];
+    var prov     = lists[i].provider || '';
+    listNameToId[name]          = realId;
+    listIndexToId[String(i)]    = realId;
+    listIndexToProvider[String(i)] = prov;
+    listNameToProvider[name]       = prov;
   }
   console.log('List index->ID map:', JSON.stringify(listIndexToId));
 
@@ -242,9 +279,11 @@ function fetchTasks(listId) {
   var realListId = listIndexToId[String(listId)] || listId;
   console.log('Fetching tasks for list index=' + listId + ' realId=' + realListId);
 
+  var listProvider = listIndexToProvider[String(listId)] || '';
+  var provParam = listProvider ? 'provider=' + listProvider : providerParam();
   var xhr = new XMLHttpRequest();
-  var url = API_BASE + '/lists/' + encodeURIComponent(realListId) + '/tasks?' + providerParam();
-  console.log('Request URL:', url);
+  var url = API_BASE + '/lists/' + encodeURIComponent(realListId) + '/tasks?' + provParam;
+  console.log('Request URL:', url, '| provider:', listProvider || '(default)');
   xhr.open('GET', url, true);
   setAuthHeader(xhr);
   xhr.onload = function() {
@@ -518,12 +557,14 @@ function sendTasksToWatch(tasks) {
 // Complete a task
 function completeTask(taskId, listName) {
   // taskId from watch is an array index; resolve to real provider task ID
-  var realTaskId = taskIndexToId[String(taskId)] || taskId;
-  var listId     = listNameToId[listName] || listName;
-  console.log('Completing task index=' + taskId + ' realId=' + realTaskId + ' in list: ' + listName + ' (listId: ' + listId + ')');
+  var realTaskId    = taskIndexToId[String(taskId)] || taskId;
+  var listId        = listNameToId[listName] || listName;
+  var listProvider  = listNameToProvider[listName] || '';
+  var provParam     = listProvider ? 'provider=' + listProvider : providerParam();
+  console.log('Completing task index=' + taskId + ' realId=' + realTaskId + ' in list: ' + listName + ' (listId: ' + listId + ') provider: ' + (listProvider || '(default)'));
 
   var xhr = new XMLHttpRequest();
-  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks/' + encodeURIComponent(realTaskId) + '/complete?' + providerParam();
+  var url = API_BASE + '/lists/' + encodeURIComponent(listId) + '/tasks/' + encodeURIComponent(realTaskId) + '/complete?' + provParam;
   xhr.open('PATCH', url, true);
   setAuthHeader(xhr);
   xhr.onload = function() {
@@ -551,13 +592,14 @@ function completeTask(taskId, listName) {
 Pebble.addEventListener('showConfiguration', function(e) {
   console.log('Opening configuration page...');
 
-  var currentServerType    = localStorage.getItem('api_server_type') || 'local';
-  var currentHostname      = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
-  var currentPort          = localStorage.getItem('api_port') || DEFAULT_PORT_LOCAL;
-  var currentProvider      = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
-  var currentUsername      = localStorage.getItem('api_enterprise_username') || '';
-  var currentHasPassword   = localStorage.getItem('api_enterprise_password') ? '1' : '0';
-  var currentShowCompleted = localStorage.getItem('show_completed') === '1' ? '1' : '0';
+  var currentServerType          = localStorage.getItem('api_server_type') || 'local';
+  var currentHostname            = localStorage.getItem('api_hostname') || DEFAULT_HOSTNAME;
+  var currentPort                = localStorage.getItem('api_port') || DEFAULT_PORT_LOCAL;
+  var currentProvider            = localStorage.getItem('api_provider') || DEFAULT_PROVIDER;
+  var currentUsername            = localStorage.getItem('api_enterprise_username') || '';
+  var currentHasPassword         = localStorage.getItem('api_enterprise_password') ? '1' : '0';
+  var currentShowCompleted       = localStorage.getItem('show_completed') === '1' ? '1' : '0';
+  var currentEnterpriseProviders = localStorage.getItem('enterprise_provider_filter') || 'all';
 
   // Build configuration URL (v= cache buster, password never passed to page)
   var configUrl = 'https://alan-johnson.github.io/hb-reminders/config.html' +
@@ -568,7 +610,8 @@ Pebble.addEventListener('showConfiguration', function(e) {
     '&provider=' + encodeURIComponent(currentProvider) +
     '&username=' + encodeURIComponent(currentUsername) +
     '&hasPassword=' + currentHasPassword +
-    '&showCompleted=' + currentShowCompleted;
+    '&showCompleted=' + currentShowCompleted +
+    '&enterpriseProviders=' + encodeURIComponent(currentEnterpriseProviders);
 
   console.log('Config URL:', configUrl);
   Pebble.openURL(configUrl);
@@ -605,6 +648,9 @@ Pebble.addEventListener('webviewclosed', function(e) {
       if (config.password) {
         localStorage.setItem('api_enterprise_password', config.password);
       }
+      if (config.enterpriseProviders) {
+        localStorage.setItem('enterprise_provider_filter', config.enterpriseProviders);
+      }
 
       // Update runtime vars
       updateAPIBase();
@@ -614,11 +660,13 @@ Pebble.addEventListener('webviewclosed', function(e) {
       if (config.serverType === 'enterprise') {
         authenticateEnterprise(function(ok) {
           console.log('Enterprise auth after config save:', ok ? 'success' : 'failed');
+          if (ok) fetchTaskLists();
         });
       } else {
         // Clear any stale enterprise JWT when switching back to local
         enterpriseJwt = null;
         localStorage.removeItem('api_enterprise_jwt');
+        fetchTaskLists();
       }
 
     } catch (err) {

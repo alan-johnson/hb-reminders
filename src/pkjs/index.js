@@ -16,14 +16,27 @@ var showCompleted = localStorage.getItem('show_completed') === '1';
 var API_BASE      = serverType === 'enterprise'
                       ? ENTERPRISE_API_BASE
                       : "http://" + hostname + ":" + port + "/api";
-var listNameToId       = {};  // Cache list name  -> real ID for task completion
-var listIndexToId      = {};  // Cache list index -> real ID for fetchTasks
-var listIndexToProvider = {}; // Cache list index -> provider (enterprise only)
-var listNameToProvider  = {}; // Cache list name  -> provider (enterprise only)
-var taskIndexToId      = {};  // Cache task index -> real ID for completeTask
+
+// In-memory index maps (rebuilt from cache or server response)
+var listNameToId        = {};  // list name  -> real provider ID (for completeTask)
+var listIndexToId       = {};  // list index -> real provider ID (for fetchTasks)
+var listIndexToProvider = {};  // list index -> provider name
+var listNameToProvider  = {};  // list name  -> provider name
+var listNameToIndex     = {};  // list name  -> list index (for cache busting on complete)
+var taskIndexToId       = {};  // task index -> real provider task ID (for completeTask)
 
 // Enterprise JWT token
 var enterpriseJwt = localStorage.getItem('api_enterprise_jwt') || null;
+
+// Watch navigation state — used to avoid re-sending lists while user views tasks
+var jsWatchState = 'lists';   // 'lists' | 'tasks'
+
+// Pre-fetch guard — prevent concurrent background task pre-fetches
+var prefetchInFlight = false;
+
+// Client-side localStorage cache TTLs
+var CACHE_TTL_LISTS = 10 * 60 * 1000;  // 10 minutes
+var CACHE_TTL_TASKS  =  5 * 60 * 1000;  //  5 minutes
 
 console.log('Using API:', API_BASE, '| Server type:', serverType);
 
@@ -115,18 +128,141 @@ function providerParam() {
   return 'provider=' + provider;
 }
 
+// --- Index map helpers ---
+
+// Build all index maps from a lists array (without sending to watch)
+function buildIndexMaps(lists) {
+  listNameToId        = {};
+  listIndexToId       = {};
+  listIndexToProvider = {};
+  listNameToProvider  = {};
+  listNameToIndex     = {};
+  for (var i = 0; i < lists.length; i++) {
+    var realId = lists[i].id || String(i);
+    var name   = lists[i].name || lists[i];
+    var prov   = lists[i].provider || '';
+    listNameToId[name]             = realId;
+    listIndexToId[String(i)]       = realId;
+    listIndexToProvider[String(i)] = prov;
+    listNameToProvider[name]       = prov;
+    listNameToIndex[name]          = String(i);
+  }
+}
+
+// --- localStorage cache helpers ---
+
+function saveListsCache(lists) {
+  var providerFilter = localStorage.getItem('enterprise_provider_filter') || 'all';
+  try {
+    localStorage.setItem('cache_lists', JSON.stringify({
+      ts: Date.now(), providerFilter: providerFilter, data: lists
+    }));
+    localStorage.setItem('cache_list_index_map', JSON.stringify({
+      ts:              Date.now(),
+      indexToId:       listIndexToId,
+      indexToProvider: listIndexToProvider,
+      nameToId:        listNameToId,
+      nameToProvider:  listNameToProvider,
+      nameToIndex:     listNameToIndex
+    }));
+  } catch (e) { console.log('Lists cache write failed:', e); }
+}
+
+function loadListsCache() {
+  try {
+    var raw = localStorage.getItem('cache_lists');
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    var providerFilter = localStorage.getItem('enterprise_provider_filter') || 'all';
+    if (obj.providerFilter !== providerFilter) return null;
+    if (Date.now() - obj.ts > CACHE_TTL_LISTS) return null;
+    return obj.data;
+  } catch (e) { return null; }
+}
+
+function restoreIndexMapsFromCache() {
+  try {
+    var raw = localStorage.getItem('cache_list_index_map');
+    if (!raw) return false;
+    var obj = JSON.parse(raw);
+    listIndexToId       = obj.indexToId       || {};
+    listIndexToProvider = obj.indexToProvider || {};
+    listNameToId        = obj.nameToId        || {};
+    listNameToProvider  = obj.nameToProvider  || {};
+    listNameToIndex     = obj.nameToIndex     || {};
+    return true;
+  } catch (e) { return false; }
+}
+
+function saveTasksCache(listId, realListId, tasks) {
+  try {
+    localStorage.setItem('cache_tasks_' + listId, JSON.stringify({
+      ts: Date.now(), realListId: realListId, data: tasks
+    }));
+  } catch (e) { console.log('Tasks cache write failed:', e); }
+}
+
+function loadTasksCache(listId, realListId) {
+  try {
+    var raw = localStorage.getItem('cache_tasks_' + listId);
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (obj.realListId !== realListId) return null;
+    if (Date.now() - obj.ts > CACHE_TTL_TASKS) return null;
+    return obj.data;
+  } catch (e) { return null; }
+}
+
+// Background pre-fetch tasks for the most likely list the user will open
+function prefetchTasksForLikelyList(lists) {
+  if (prefetchInFlight || !lists || lists.length === 0) return;
+  var lastIdx = localStorage.getItem('last_selected_list_index') || '0';
+  var idx = parseInt(lastIdx, 10);
+  if (isNaN(idx) || idx >= lists.length) idx = 0;
+  var idxStr = String(idx);
+  var realId = listIndexToId[idxStr];
+  if (!realId) return;
+  // Skip if already cached and fresh
+  if (loadTasksCache(idxStr, realId)) {
+    console.log('Prefetch: list ' + idx + ' already cached, skipping');
+    return;
+  }
+  prefetchInFlight = true;
+  var listProvider = listIndexToProvider[idxStr] || '';
+  var provParam = listProvider ? 'provider=' + listProvider : providerParam();
+  var xhr = new XMLHttpRequest();
+  var url = API_BASE + '/lists/' + encodeURIComponent(realId) + '/tasks?' + provParam;
+  console.log('Prefetching tasks for list index ' + idx + ':', url);
+  xhr.open('GET', url, true);
+  setAuthHeader(xhr);
+  xhr.onload = function() {
+    prefetchInFlight = false;
+    if (xhr.readyState === 4 && xhr.status === 200) {
+      try {
+        var response = JSON.parse(xhr.responseText);
+        saveTasksCache(idxStr, realId, response.tasks);
+        console.log('Prefetch complete: cached ' + response.tasks.length + ' tasks for list ' + idx);
+      } catch (e) {}
+    }
+  };
+  xhr.onerror   = function() { prefetchInFlight = false; };
+  xhr.ontimeout = function() { prefetchInFlight = false; };
+  xhr.timeout = 10000;
+  xhr.send();
+}
+
 // Listen for when the app is ready
-Pebble.addEventListener('ready', function(e) {
+Pebble.addEventListener('ready', function() {
   console.warn('=== PEBBLE READY ===');
   console.log('PebbleKit JS ready!');
   // Don't fetch here, let the watch app request when needed
-  
+
   // Send ready signal to watch (KEY_TYPE = 0)
-  Pebble.sendAppMessage({'KEY_TYPE': 0}, 
-    function(e) {
+  Pebble.sendAppMessage({'KEY_TYPE': 0},
+    function() {
       console.log('Ready message sent to watch successfully!');
     },
-    function(e) {
+    function() {
       console.log('Failed to send ready message to watch');
     }
   );
@@ -139,30 +275,25 @@ Pebble.addEventListener('appmessage', function(e) {
   var payload = e.payload;
   console.log('Payload = ' + JSON.stringify(payload));
 
-  // Acknowledge receipt of the message
-  //e.ack();
-
-  //if (payload[KEY_TYPE] !== undefined) {
-    console.log('Processing payload with KEY_TYPE:', payload.KEY_TYPE);
-    if (payload.KEY_TYPE === 1) {
-      // Fetch task lists
-      console.log('KEY_TYPE 1: Fetching task lists');
-      fetchTaskLists();
-    } else if (payload.KEY_TYPE === 2) {
-      // Fetch tasks for a specific list
-      var listId = payload.KEY_ID;
-      console.log('KEY_TYPE 2: Fetching tasks for list id:', listId);
-      fetchTasks(listId);
-    } else if (payload.KEY_TYPE === 3) {
-      // Complete a task
-      var taskId = payload.KEY_ID;
-      var listName = payload.KEY_LIST_NAME;
-      console.log('KEY_TYPE 3: Completing task', taskId, 'in list', listName);
-      completeTask(taskId, listName);
-    }
+  console.log('Processing payload with KEY_TYPE:', payload.KEY_TYPE);
+  if (payload.KEY_TYPE === 1) {
+    // Fetch task lists
+    jsWatchState = 'lists';
+    console.log('KEY_TYPE 1: Fetching task lists');
+    fetchTaskLists();
+  } else if (payload.KEY_TYPE === 2) {
+    // Fetch tasks for a specific list
+    var listId = payload.KEY_ID;
+    console.log('KEY_TYPE 2: Fetching tasks for list id:', listId);
+    fetchTasks(listId);
+  } else if (payload.KEY_TYPE === 3) {
+    // Complete a task
+    var taskId = payload.KEY_ID;
+    var listName = payload.KEY_LIST_NAME;
+    console.log('KEY_TYPE 3: Completing task', taskId, 'in list', listName);
+    completeTask(taskId, listName);
   }
-//}
-);
+});
 
 // Fetch task list names
 function fetchTaskLists() {
@@ -173,6 +304,16 @@ function fetchTaskLists() {
               : API_BASE + '/lists?' + providerParam();
   var enterpriseProviderFilter = localStorage.getItem('enterprise_provider_filter') || 'all';
   console.log('Lists URL:', url, '| serverType:', serverType, '| hasJwt:', !!enterpriseJwt, '| providerFilter:', enterpriseProviderFilter);
+
+  // Serve cached lists immediately if available
+  var cachedLists = loadListsCache();
+  if (cachedLists) {
+    console.log('Serving ' + cachedLists.length + ' lists from cache');
+    restoreIndexMapsFromCache();
+    sendTaskListsToWatch(cachedLists);
+  }
+
+  // Fetch fresh data (background if cache was served, foreground otherwise)
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   setAuthHeader(xhr);
@@ -185,14 +326,28 @@ function fetchTaskLists() {
       } else if (xhr.status === 200) {
         try {
           var response = JSON.parse(xhr.responseText);
-          console.log('Received lists:', JSON.stringify(response));
           var lists = response.lists;
           if (serverType === 'enterprise' && enterpriseProviderFilter !== 'all') {
             var allowed = enterpriseProviderFilter.split(',');
             lists = lists.filter(function(l) { return allowed.indexOf(l.provider) !== -1; });
             console.log('Filtered to providers [' + enterpriseProviderFilter + ']: ' + lists.length + ' lists');
           }
-          sendTaskListsToWatch(lists);
+          // Only resend to watch if data changed from what was cached
+          var freshStr = JSON.stringify(lists);
+          var cacheChanged = !cachedLists || JSON.stringify(cachedLists) !== freshStr;
+          if (cacheChanged) {
+            console.log('Fresh lists differ from cache, updating');
+            if (jsWatchState === 'lists') {
+              sendTaskListsToWatch(lists);
+            } else {
+              // User navigated to tasks view — rebuild maps only, skip resend
+              console.log('Watch in tasks view, rebuilding maps only');
+              buildIndexMaps(lists);
+              saveListsCache(lists);
+            }
+          } else {
+            console.log('Fresh lists match cache, no update needed');
+          }
         } catch (e) {
           console.log('Error parsing response:', e);
         }
@@ -211,22 +366,10 @@ function fetchTaskLists() {
   xhr.send();
 }
 
-// Send task lists to the watch sequentially with delays to avoid APP_MSG_BUSY
+// Send task lists to the watch sequentially
 function sendTaskListsToWatch(lists) {
-  // Cache mappings: name->realId for completeTask, index->realId for fetchTasks
-  listNameToId        = {};
-  listIndexToId       = {};
-  listIndexToProvider = {};
-  listNameToProvider  = {};
-  for (var i = 0; i < lists.length; i++) {
-    var realId   = lists[i].id || String(i);
-    var name     = lists[i].name || lists[i];
-    var prov     = lists[i].provider || '';
-    listNameToId[name]          = realId;
-    listIndexToId[String(i)]    = realId;
-    listIndexToProvider[String(i)] = prov;
-    listNameToProvider[name]       = prov;
-  }
+  // Rebuild all index maps
+  buildIndexMaps(lists);
   console.log('List index->ID map:', JSON.stringify(listIndexToId));
 
   var currentIndex = 0;
@@ -235,6 +378,8 @@ function sendTaskListsToWatch(lists) {
   function sendNextList() {
     if (currentIndex >= lists.length) {
       console.log('All task lists sent successfully');
+      // After lists are delivered, pre-fetch tasks for the most likely list
+      prefetchTasksForLikelyList(lists);
       return;
     }
 
@@ -245,13 +390,13 @@ function sendTaskListsToWatch(lists) {
     };
 
     Pebble.sendAppMessage(dict,
-      function(e) {
+      function() {
         console.log('Task list ' + (currentIndex + 1) + '/' + lists.length + ' sent successfully');
         retryDelay = 500;
         currentIndex++;
-        setTimeout(sendNextList, 200);
+        setTimeout(sendNextList, 30);
       },
-      function(e) {
+      function() {
         console.log('Error sending task list ' + (currentIndex + 1) + ', retrying in ' + retryDelay + 'ms');
         setTimeout(sendNextList, retryDelay);
         retryDelay = Math.min(retryDelay * 2, 4000);
@@ -262,11 +407,12 @@ function sendTaskListsToWatch(lists) {
   // Send count first so the watch can allocate memory
   var countDict = { 'KEY_TYPE': 1, 'KEY_COUNT': lists.length };
   Pebble.sendAppMessage(countDict,
-    function(e) {
+    function() {
       console.log('Task lists count (' + lists.length + ') sent, now sending items...');
-      setTimeout(sendNextList, 200);
+      saveListsCache(lists);
+      setTimeout(sendNextList, 30);
     },
-    function(e) {
+    function() {
       console.log('Error sending task lists count, retrying...');
       setTimeout(function() { sendTaskListsToWatch(lists); }, 500);
     }
@@ -275,27 +421,45 @@ function sendTaskListsToWatch(lists) {
 
 // Fetch tasks for a specific list
 function fetchTasks(listId) {
-  // listId from watch is an array index; resolve to the real provider list ID
-  var realListId = listIndexToId[String(listId)] || listId;
+  jsWatchState = 'tasks';
+  localStorage.setItem('last_selected_list_index', String(listId));
+
+  var realListId   = listIndexToId[String(listId)] || listId;
+  var listProvider = listIndexToProvider[String(listId)] || '';
+  var provParam    = listProvider ? 'provider=' + listProvider : providerParam();
   console.log('Fetching tasks for list index=' + listId + ' realId=' + realListId);
 
-  var listProvider = listIndexToProvider[String(listId)] || '';
-  var provParam = listProvider ? 'provider=' + listProvider : providerParam();
-  var xhr = new XMLHttpRequest();
   var url = API_BASE + '/lists/' + encodeURIComponent(realListId) + '/tasks?' + provParam;
   console.log('Request URL:', url, '| provider:', listProvider || '(default)');
+
+  // Serve cached tasks immediately if available
+  var cachedTasks = loadTasksCache(String(listId), realListId);
+  if (cachedTasks) {
+    console.log('Serving ' + cachedTasks.length + ' tasks from cache for list ' + listId);
+    sendTasksToWatch(cachedTasks);
+  }
+
+  // Fetch fresh data (background if cache was served, foreground otherwise)
+  var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   setAuthHeader(xhr);
   xhr.onload = function() {
     if (xhr.readyState === 4) {
       if (xhr.status === 401 && serverType === 'enterprise') {
         console.log('JWT expired, re-authenticating...');
-        authenticateEnterprise(function(ok) { if (ok) fetchTasks(listId); });  // listId = original index
+        authenticateEnterprise(function(ok) { if (ok) fetchTasks(listId); });
       } else if (xhr.status === 200) {
         try {
           var response = JSON.parse(xhr.responseText);
-          console.log('Received tasks:', JSON.stringify(response));
-          sendTasksToWatch(response.tasks);
+          var freshTasks = response.tasks;
+          saveTasksCache(String(listId), realListId, freshTasks);
+          var cacheChanged = !cachedTasks || JSON.stringify(cachedTasks) !== JSON.stringify(freshTasks);
+          if (cacheChanged) {
+            console.log('Fresh tasks differ from cache, updating watch');
+            sendTasksToWatch(freshTasks);
+          } else {
+            console.log('Fresh tasks match cache, no update needed');
+          }
         } catch (e) {
           console.log('Error parsing response:', e);
         }
@@ -304,6 +468,9 @@ function fetchTasks(listId) {
       }
     }
   };
+  xhr.onerror   = function() { console.log('Tasks XHR network error (onerror fired)'); };
+  xhr.ontimeout = function() { console.log('Tasks XHR timed out'); };
+  xhr.timeout   = 15000;
   xhr.send();
 }
 
@@ -444,15 +611,15 @@ function convertDateToISO(dateStr) {
   }
 }
 
-// Send tasks to the watch sequentially with delays to avoid APP_MSG_BUSY
+// Send tasks to the watch sequentially
 function sendTasksToWatch(tasks) {
   // Filter out completed tasks unless showCompleted is enabled
   if (tasks && !showCompleted) {
     tasks = tasks.filter(function(t) { return !t.completed; });
   }
 
-  // Sort by classification for enterprise microsoft/google (Now → Not Now → Later),
-  // or by priority descending for local server and enterprise apple
+  // Sort by classification for enterprise (Now → Not Now → Later),
+  // or by priority descending for local server
   if (tasks && tasks.length > 1) {
     var classificationOrder = { 'now': 0, 'not_now': 1, 'later': 2 };
     tasks = tasks.slice().sort(function(a, b) {
@@ -474,7 +641,6 @@ function sendTasksToWatch(tasks) {
     taskIndexToId[String(i)] = tasks[i].id || String(i);
   }
 
-  // Send tasks one at a time with delay to avoid APP_MSG_BUSY
   var currentIndex = 0;
   var retryDelay = 500;
 
@@ -498,18 +664,16 @@ function sendTasksToWatch(tasks) {
       }
     }
 
-    var notes = (task.notes || '').slice(0, 255);
+    // Truncate notes to 128 chars to stay well within AppMessage 512-byte inbox
+    var notes = (task.notes || '').slice(0, 128);
 
     // Map priority for watch display
     // Local: 1=Low, 2=Medium, 3=High; Enterprise: 4=Later, 5=Not Now, 6=Now
     var priority = 0;
     if (serverType === 'enterprise') {
-      // Enterprise server returns task.classification for all providers:
-      // "now" | "not_now" | "later" | null (completed tasks)
       var classificationMap = { 'now': 6, 'not_now': 5, 'later': 4 };
       priority = classificationMap[task.classification] || 0;
     } else if (task.priority) {
-      // Local server and enterprise apple: numeric priority (1=high, 2=medium, 3=low)
       priority = task.priority <= 3 ? task.priority : 3;
     }
 
@@ -524,13 +688,13 @@ function sendTasksToWatch(tasks) {
     };
 
     Pebble.sendAppMessage(dict,
-      function(e) {
+      function() {
         console.log('Task ' + (currentIndex + 1) + '/' + taskCount + ' sent successfully');
         retryDelay = 500;
         currentIndex++;
-        setTimeout(sendNextTask, 200);
+        setTimeout(sendNextTask, 30);
       },
-      function(e) {
+      function() {
         console.log('Error sending task ' + (currentIndex + 1) + ', retrying in ' + retryDelay + 'ms');
         setTimeout(sendNextTask, retryDelay);
         retryDelay = Math.min(retryDelay * 2, 4000);
@@ -541,13 +705,13 @@ function sendTasksToWatch(tasks) {
   // Send count first so the watch can allocate memory
   var countDict = { 'KEY_TYPE': 2, 'KEY_COUNT': taskCount };
   Pebble.sendAppMessage(countDict,
-    function(e) {
+    function() {
       console.log('Tasks count (' + taskCount + ') sent, now sending items...');
       if (taskCount > 0) {
-        setTimeout(sendNextTask, 200);
+        setTimeout(sendNextTask, 30);
       }
     },
-    function(e) {
+    function() {
       console.log('Error sending tasks count, retrying...');
       setTimeout(function() { sendTasksToWatch(tasks); }, 500);
     }
@@ -574,6 +738,12 @@ function completeTask(taskId, listName) {
         authenticateEnterprise(function(ok) { if (ok) completeTask(taskId, listName); });
       } else if (xhr.status === 200 || xhr.status === 204) {
         console.log('Task completed successfully');
+        // Bust task cache for this list so the next open gets fresh data
+        var listIdx = listNameToIndex[listName];
+        if (listIdx !== undefined) {
+          localStorage.removeItem('cache_tasks_' + listIdx);
+          console.log('Busted task cache for list index ' + listIdx);
+        }
         var dict = {
           'KEY_TYPE': 4,
           'KEY_ID': taskId
@@ -584,12 +754,14 @@ function completeTask(taskId, listName) {
       }
     }
   };
-
+  xhr.onerror   = function() { console.log('Complete task XHR network error'); };
+  xhr.ontimeout = function() { console.log('Complete task XHR timed out'); };
+  xhr.timeout   = 15000;
   xhr.send();
 }
 
 // Configuration page handlers
-Pebble.addEventListener('showConfiguration', function(e) {
+Pebble.addEventListener('showConfiguration', function() {
   console.log('Opening configuration page...');
 
   var currentServerType          = localStorage.getItem('api_server_type') || 'local';
@@ -617,7 +789,7 @@ Pebble.addEventListener('showConfiguration', function(e) {
   Pebble.openURL(configUrl);
 });
 
-Pebble.addEventListener('webviewclosed', function(e) {
+Pebble.addEventListener('webviewclosed', function(e) {  // e.response used below
   console.log('Configuration page closed');
 
   if (e && e.response) {

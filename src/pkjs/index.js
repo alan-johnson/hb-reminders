@@ -35,8 +35,8 @@ var jsWatchState = 'lists';   // 'lists' | 'tasks'
 var prefetchInFlight = false;
 
 // Client-side localStorage cache TTLs
-var CACHE_TTL_LISTS = 10 * 60 * 1000;  // 10 minutes
-var CACHE_TTL_TASKS  =  5 * 60 * 1000;  //  5 minutes
+var CACHE_TTL_LISTS = 2 * 60 * 1000;   // 2 minutes (matches server TTL)
+var CACHE_TTL_TASKS = 5 * 60 * 1000;   // 5 minutes
 
 console.log('Using API:', API_BASE, '| Server type:', serverType);
 
@@ -200,6 +200,21 @@ function saveTasksCache(listId, realListId, tasks) {
       ts: Date.now(), realListId: realListId, data: tasks
     }));
   } catch (e) { console.log('Tasks cache write failed:', e); }
+}
+
+// Remove all cache_ entries from localStorage
+function clearAllCaches() {
+  var keysToRemove = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (key && key.indexOf('cache_') === 0) {
+      keysToRemove.push(key);
+    }
+  }
+  for (var j = 0; j < keysToRemove.length; j++) {
+    localStorage.removeItem(keysToRemove[j]);
+  }
+  console.log('Cleared ' + keysToRemove.length + ' cache entries');
 }
 
 function loadTasksCache(listId, realListId) {
@@ -827,6 +842,9 @@ Pebble.addEventListener('webviewclosed', function(e) {  // e.response used below
       // Update runtime vars
       updateAPIBase();
       console.log('Configuration saved. Server type:', config.serverType);
+
+      // Clear cached data so fresh lists/tasks are fetched after any config change
+      clearAllCaches();
 
       // If enterprise, obtain a JWT immediately so the first request works
       if (config.serverType === 'enterprise') {
